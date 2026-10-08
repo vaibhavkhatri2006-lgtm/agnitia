@@ -14,6 +14,11 @@ from app.decision.recommendation import (
     default_recommendation_service,
 )
 
+from app.decision.simulation import (
+    InterventionSimulationService,
+    default_simulation_service,
+)
+
 __all__ = [
     "CandidateLocation",
     "CandidateLocationService",
@@ -22,4 +27,6 @@ __all__ = [
     "ScoredCandidate",
     "RecommendationScoringService",
     "default_recommendation_service",
+    "InterventionSimulationService",
+    "default_simulation_service",
 ]

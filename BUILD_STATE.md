@@ -1,9 +1,9 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 4B (Recommendation Scoring Engine)
+- **Current Stage**: Stage 4C (What-If / Intervention Simulation)
 - **Status**: PASS
-- **Next Stage**: Stage 4C
+- **Next Stage**: Stage 4D
 
 ---
 
@@ -233,3 +233,80 @@
 
 - **Next Stage**:
   - Stage 4C
+
+---
+
+### Stage 4C: What-If / Intervention Simulation
+- **Result**: PASS
+
+- **Simulation Design**:
+  - Core engine `InterventionSimulationService` in `app/decision/simulation.py`.
+  - In-memory ephemeral simulation utilizing isolated `additional_services` parameter across `AnalyticsEngine`.
+  - Strict safety guarantee: zero database writes, zero model insertions, zero modifications to official capacities, populations, or civic report records.
+  - Multi-input support: accepts either `candidate_id` (from Stage 4A/4B) or coordinates (`latitude`, `longitude`).
+  - Spatial containment resolution using Shapely geometric boundary checks to identify receiving neighbourhood.
+
+- **Metrics Calculated**:
+  - **Baseline (Before)**:
+    - `accessibility_score` (population-weighted, 0–100)
+    - `gap_score` (`100.0 - accessibility_score`, 0–100)
+    - `service_coverage` (% population in covered areas)
+    - `underserved_population` (residents living in deserts/underserved areas)
+    - `average_travel_time_minutes` (population-weighted average estimated travel time)
+  - **Post-Intervention (After)**:
+    - Same set of 5 standardized metrics evaluated with simulated facility in-memory.
+  - **Impact (Delta)**:
+    - `accessibility_improvement` (+ points)
+    - `gap_reduction` (- points)
+    - `coverage_improvement` (+ percentage points)
+    - `underserved_population_reduction` (people relieved)
+    - `population_gaining_access` (people transitioning from unserved to served)
+    - `travel_time_improvement_minutes` (minutes saved)
+  - **Target Area Breakdown**:
+    - Direct locality evaluation (e.g., Highlands Valley before: 13.1 -> after: 78.8, +65.7 pts; travel time saved: 57.9 min).
+  - **Natural Language Justification & Attribution**:
+    - Explanation strings with key factor identification (`travel_time_reduction`, `service_desert_resolution`, `underserved_population_relief`, `coverage_expansion`, `capacity_addition`).
+
+- **API Endpoints**:
+  - `POST /simulations`
+  - `GET /simulations`
+
+- **Files Changed**:
+  - `backend/app/analytics/engine.py`
+  - `backend/app/decision/simulation.py`
+  - `backend/app/decision/__init__.py`
+  - `backend/app/schemas/simulation.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/simulations.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_simulations.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04C.md`
+
+- **Checks Run**:
+  - Valid simulation: PASS
+  - Invalid service type validation: PASS
+  - Invalid coordinates validation: PASS
+  - Invalid candidate rejection: PASS
+  - Before/after calculation consistency: PASS
+  - Coverage improvement: PASS (+23.9 pp in demo data)
+  - Underserved population reduction: PASS (22,000 residents relieved)
+  - Travel time improvement: PASS (>13 min saved citywide)
+  - Deterministic results: PASS
+  - Database integrity (no permanent writes): PASS
+  - Explanation fields & primary factors: PASS
+  - Negative/invalid impact protection: PASS
+  - Scope options (city vs area): PASS
+  - GET endpoint query-params: PASS
+  - All 5 service types: PASS
+  - Full regression test suite: PASS (76/76 passing)
+  - Backend startup & OpenAPI: PASS (16 paths)
+
+- **Known Limitations**:
+  - Multi-facility combinatorial portfolio optimization, budget constraint scheduling, and facility failure simulations belong to Stage 4D / Stage 5.
+
+- **Next Stage**:
+  - Stage 4D
+

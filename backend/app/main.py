@@ -10,6 +10,7 @@ from app.routes.auth import router as auth_router
 from app.routes.analytics import router as analytics_router
 from app.routes.decision import router as decision_router
 from app.routes.recommendations import router as recommendations_router
+from app.routes.simulations import router as simulations_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -24,6 +25,7 @@ app = FastAPI(
         {"name": "Geospatial & Analytics Engine", "description": "Deterministic spatial accessibility, gap scoring, and service desert analytics"},
         {"name": "Decision & Candidate Engine", "description": "Candidate location identification, validation, and spatial allocation engine"},
         {"name": "Recommendation Engine", "description": "Deterministic multi-factor scoring and ranking of candidate intervention locations"},
+        {"name": "Intervention Simulation", "description": "Deterministic what-if simulation comparing before/after intervention states"},
     ],
 )
 
@@ -41,6 +43,7 @@ app.include_router(auth_router)
 app.include_router(analytics_router)
 app.include_router(decision_router)
 app.include_router(recommendations_router)
+app.include_router(simulations_router)
 
 
 # --- Global Exception Handlers for Consistent Error Responses ---

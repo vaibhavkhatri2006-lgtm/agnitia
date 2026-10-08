@@ -159,15 +159,21 @@ class AnalyticsEngine:
         db: Session,
         area_lat: float,
         area_lon: float,
+        additional_services: Optional[List[Service]] = None,
     ) -> float:
         """
         Evaluates connectivity to public transit from the area center.
+        Supports optional in-memory additional_services for simulation.
         """
         transport_cat = db.query(ServiceCategory).filter_by(code="transport").first()
         if not transport_cat:
             return 50.0
 
         transit_services = db.query(Service).filter_by(category_id=transport_cat.id).all()
+        if additional_services:
+            matching_transit = [s for s in additional_services if s.category_id == transport_cat.id]
+            transit_services = list(transit_services) + matching_transit
+
         if not transit_services:
             return 10.0
 
@@ -299,9 +305,11 @@ class AnalyticsEngine:
         db: Session,
         area: GeographicArea,
         category: ServiceCategory,
+        additional_services: Optional[List[Service]] = None,
     ) -> Dict[str, Any]:
         """
         Calculates all Stage 3 metrics for a specific geographic area and service category.
+        Supports optional in-memory additional_services for simulation without database writes.
         """
         # Area demand and centroid
         demand_population = area.population
@@ -312,6 +320,10 @@ class AnalyticsEngine:
 
         # Identify nearest/relevant service in category within catchment radius
         services = db.query(Service).filter_by(category_id=category.id).all()
+        if additional_services:
+            matching_services = [s for s in additional_services if s.category_id == category.id]
+            services = list(services) + matching_services
+
         nearest_service: Optional[Service] = None
         min_dist_km = float("inf")
 
@@ -346,7 +358,9 @@ class AnalyticsEngine:
         availability_score = self.calculate_availability_score(nearest_service)
         cap_pres_data = self.calculate_capacity_and_pressure(nearest_service, demand_population)
         capacity_score = cap_pres_data["capacity_score"]
-        transport_score = self.calculate_transport_connectivity(db, area_lat, area_lon)
+        transport_score = self.calculate_transport_connectivity(
+            db, area_lat, area_lon, additional_services=additional_services
+        )
 
         # Preliminary access for equity calculation
         prelim_access = (
@@ -403,17 +417,25 @@ class AnalyticsEngine:
         }
 
     # --- 9. Multi-Category Area Summary ---
-    def analyze_area_overall(self, db: Session, area: GeographicArea) -> Dict[str, Any]:
+    def analyze_area_overall(
+        self,
+        db: Session,
+        area: GeographicArea,
+        additional_services: Optional[List[Service]] = None,
+    ) -> Dict[str, Any]:
         """
         Runs analytics across all active service categories for an area,
         computing category breakdowns and overall composite scores.
+        Supports optional in-memory additional_services for simulation.
         """
         categories = db.query(ServiceCategory).filter_by(is_active=True).all()
         category_results = []
         total_access = 0.0
 
         for cat in categories:
-            res = self.analyze_area_category(db, area, cat)
+            res = self.analyze_area_category(
+                db, area, cat, additional_services=additional_services
+            )
             category_results.append(res)
             total_access += res["accessibility_score"]
 

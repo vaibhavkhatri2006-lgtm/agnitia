@@ -24,6 +24,14 @@ from app.schemas.recommendation import (
     RecommendationResponse,
 )
 
+from app.schemas.simulation import (
+    SimulationRequest,
+    SimulationStateMetrics,
+    SimulationImpactMetrics,
+    TargetAreaImpact,
+    SimulationResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -46,4 +54,9 @@ __all__ = [
     "ExcludedCandidateResponse",
     "RecommendationRequest",
     "RecommendationResponse",
+    "SimulationRequest",
+    "SimulationStateMetrics",
+    "SimulationImpactMetrics",
+    "TargetAreaImpact",
+    "SimulationResponse",
 ]

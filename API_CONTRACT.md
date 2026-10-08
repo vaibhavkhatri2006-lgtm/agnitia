@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.4.2
-## Stage: Stage 4B (Recommendation Scoring Engine)
+## Version: 0.4.3
+## Stage: Stage 4C (What-If / Intervention Simulation)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -459,3 +459,111 @@ Evaluates, scores, explains, and ranks candidate intervention locations determin
   - `area_id` (optional int)
   - `min_gap_threshold` (optional float, default: `20.0`)
 - **Response `200 OK`**: Same schema as `POST /recommendations`.
+
+---
+
+#### 6. What-If / Intervention Simulation Engine (Stage 4C)
+
+Simulates the impact of adding a proposed civic service at a specific candidate location or coordinate point without modifying the official database. Evaluates before vs after states and calculates measurable improvements.
+
+##### `POST /simulations`
+- **Description:** Executes in-memory simulation for a proposed facility.
+- **Request Body:**
+```json
+{
+  "service_type": "healthcare",
+  "candidate_id": "cand-healthcare-9-centroid",
+  "latitude": null,
+  "longitude": null,
+  "scope": "city",
+  "proposed_name": "Highlands Valley Community Health Center",
+  "proposed_capacity": 5000
+}
+```
+- **Coordinate-based Request Alternative:**
+```json
+{
+  "service_type": "healthcare",
+  "latitude": 12.984123,
+  "longitude": 77.632145,
+  "scope": "city",
+  "proposed_name": "Highlands Valley Community Health Center",
+  "proposed_capacity": 5000
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "simulation_id": "sim-healthcare-cand-healthcare-9-centroid-city",
+  "service_type": "healthcare",
+  "candidate_id": "cand-healthcare-9-centroid",
+  "latitude": 12.978,
+  "longitude": 77.625,
+  "scope": "city",
+  "target_area": {
+    "area_id": 9,
+    "area_name": "Highlands Valley",
+    "area_type": "neighbourhood",
+    "population": 22000,
+    "before_accessibility": 13.1,
+    "after_accessibility": 78.8,
+    "accessibility_improvement": 65.7,
+    "before_gap": 86.9,
+    "after_gap": 21.2,
+    "before_classification": "Critical Desert",
+    "after_classification": "Adequate",
+    "before_travel_time_minutes": 57.9,
+    "after_travel_time_minutes": 0.0,
+    "travel_time_saved_minutes": 57.9
+  },
+  "before": {
+    "accessibility_score": 65.4,
+    "gap_score": 34.6,
+    "service_coverage": 76.1,
+    "underserved_population": 22000,
+    "average_travel_time_minutes": 15.9
+  },
+  "after": {
+    "accessibility_score": 81.1,
+    "gap_score": 18.9,
+    "service_coverage": 100.0,
+    "underserved_population": 0,
+    "average_travel_time_minutes": 2.1
+  },
+  "impact": {
+    "accessibility_improvement": 15.7,
+    "gap_reduction": 15.7,
+    "coverage_improvement": 23.9,
+    "underserved_population_reduction": 22000,
+    "population_gaining_access": 22000,
+    "travel_time_improvement_minutes": 13.8
+  },
+  "explanation": "The proposed healthcare facility in Highlands Valley improves access because it reduces estimated travel time from 57.9 to 0.0 minutes (57.9 min saved); resolves the Critical Desert status in Highlands Valley; provides meaningful healthcare coverage for 22,000 previously underserved residents; increases overall service coverage by +23.9 percentage points; adds 5,000 units of dedicated capacity relieving service pressure.",
+  "primary_factors": [
+    "travel_time_reduction",
+    "service_desert_resolution",
+    "underserved_population_relief",
+    "coverage_expansion",
+    "capacity_addition"
+  ],
+  "confidence": 0.9
+}
+```
+- **Error Responses**:
+  - `400 Bad Request`:
+    - "Unsupported service type '...'. Supported services: healthcare, education, transport, water, market"
+    - "Candidate '...' not found for service type '...'"
+    - "Either 'candidate_id' or both 'latitude' and 'longitude' must be provided"
+  - `422 Unprocessable Entity`: Coordinate values out of bounds ([-90, 90], [-180, 180]) or non-numeric.
+
+##### `GET /simulations`
+- **Description:** Query-parameter variant of what-if intervention simulation.
+- **Query Parameters:**
+  - `service_type` (required string): `healthcare`, `education`, `transport`, `water`, `market`
+  - `candidate_id` (optional string): Candidate ID
+  - `latitude` (optional float): -90.0 to 90.0
+  - `longitude` (optional float): -180.0 to 180.0
+  - `scope` (optional string, default: `"city"`): `"city"`, `"neighbourhoods"`, or area ID
+  - `proposed_capacity` (optional int, default: `5000`)
+- **Response `200 OK`**: Same schema as `POST /simulations`.
+
