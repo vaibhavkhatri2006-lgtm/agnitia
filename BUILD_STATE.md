@@ -47,4 +47,10 @@
 - [x] Reality gap & confidence panel
 - [x] Recommendation panel & UI
 
-... (Stages 9-12 pending)
+## Stage 9: Scenario Lab & Simulation
+- [x] Scenario Lab UI
+- [x] Service simulation before/after charts
+- [x] Impact cards & investment comparison
+- [x] Future-risk visualization
+
+... (Stages 10-12 pending)
