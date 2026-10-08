@@ -1,10 +1,10 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 5 (Frontend Integration Support)
+- **Current Stage**: Stage 6 (Map + Core Dashboard Backend)
 - **Status**: PASS
-- **API Integration**: Ready for Person 1 Frontend Connection
-- **Next Stage**: Stage 6
+- **Map / Dashboard Backend**: Ready for Person 1 Frontend Map & Dashboard
+- **Next Stage**: Stage 7
 
 ---
 
@@ -449,5 +449,74 @@
 
 - **Next Stage**:
   - Stage 6
+
+---
+
+### Stage 6: Map + Core Dashboard Backend
+- **Result**: PASS
+- **Status**: Map and Core Dashboard Backend Ready for Person 1
+
+- **Features & Enhancements Implemented**:
+  1. **Locality Polygon GeoJSON (`GET /areas/geojson`, `GET /areas/{area_id}/geojson`)**:
+     - Standard RFC 7946 GeoJSON FeatureCollection and Feature representations.
+     - Fully WGS84 CRS compliant polygon/multipolygon geometries parsed via Shapely.
+     - Optional analytics property injection (`accessibility_score`, `gap_score`, `desert_classification`, `categories_evaluated`).
+     - Supports administrative filtering (`area_type`, `parent_id`).
+  2. **Service Point GeoJSON (`GET /services/geojson`)**:
+     - Standard GeoJSON Point FeatureCollection for facilities.
+     - GeoJSON coordinate order `[longitude, latitude]` for immediate consumption by Leaflet marker layers.
+     - Supports filters: `category_code`, `area_id`, `status`.
+  3. **Underserved Rankings Leaderboard (`GET /analytics/rankings/underserved`)**:
+     - Deterministic prioritization ranking of areas from most underserved to least underserved.
+     - Supports composite ranking and category-specific rankings (e.g. healthcare, education, transport, water, market).
+     - Deterministic tie-breaking (`-gap_score`, `-population`, `area_id`).
+     - Powers the Core Dashboard's "Top Underserved Areas" leaderboard and map quick-filter controls.
+  4. **Selected Locality Full Dashboard Metrics (`GET /analytics/areas/{area_id}`)**:
+     - Complete, verified scorecard metrics:
+       - Accessibility Score (0–100)
+       - Gap Score (0–100)
+       - Service Desert Classification
+       - Population
+       - Nearest facility name, distance (km), and travel time (min)
+       - Capacity, current load, and service pressure classification
+       - Equity score
+       - Data confidence score
+       - Reality Gap indicators from community ground reports
+  5. **Fault-Tolerant & Empty Data Handling**:
+     - Safe fallbacks for missing/unlocated geometries (`geometry: None` conforming to RFC 7946).
+     - Empty result sets for non-matching filters without exceptions.
+     - Zero duplicate calculation logic, strictly leveraging existing Stage 3 analytics engine.
+
+- **Files Changed**:
+  - `backend/app/analytics/geojson.py`
+  - `backend/app/schemas/geojson.py`
+  - `backend/app/schemas/rankings.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/areas.py`
+  - `backend/app/routes/services.py`
+  - `backend/app/routes/analytics.py`
+  - `backend/tests/test_stage6.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-06.md`
+
+- **Checks Run**:
+  - Map / Locality API: PASS
+  - Service API: PASS
+  - GeoJSON validation: PASS
+  - Accessibility / Gap API: PASS
+  - Ranking API: PASS
+  - Selected-area metrics: PASS
+  - Empty-data handling: PASS
+  - Stage 3 regression tests: PASS (14/14)
+  - Stage 4 regression tests: PASS (51/51)
+  - Full test suite: PASS (98/98 passing)
+  - Backend startup: PASS
+
+- **Known Limitations**:
+  - Vector tile caching (MVT) and WebSockets belong to later stages.
+
+- **Next Stage**:
+  - Stage 7
 
 

@@ -10,6 +10,12 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Service, ServiceCategory, GeographicArea
 from app.schemas.infrastructure import ServiceItem, ServiceCategoryItem
+from app.schemas.geojson import (
+    GeoJSONGeometry,
+    GeoJSONFeature,
+    GeoJSONFeatureCollection,
+)
+from app.analytics.geojson import point_to_geojson_dict
 
 router = APIRouter(prefix="/services", tags=["Services & Infrastructure"])
 
@@ -43,6 +49,83 @@ def get_service_categories(
         )
         for cat in categories
     ]
+
+
+@router.get(
+    "/geojson",
+    response_model=GeoJSONFeatureCollection,
+    summary="Get all civic facilities as RFC 7946 GeoJSON Point FeatureCollection",
+)
+def get_services_geojson(
+    category_code: Optional[str] = Query(
+        None,
+        description="Filter by service category code (e.g. healthcare, education, transport, water, market)",
+    ),
+    area_id: Optional[int] = Query(
+        None,
+        description="Filter by host geographic area ID",
+    ),
+    status_filter: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Filter by operational status (operational, degraded, temporarily_unavailable, closed)",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns civic facilities formatted as standard GeoJSON Point features.
+    Ideal for direct consumption by Leaflet marker layers.
+    """
+    query = db.query(Service).join(ServiceCategory)
+
+    if category_code:
+        query = query.filter(ServiceCategory.code == category_code.lower())
+
+    if area_id is not None:
+        query = query.filter(Service.area_id == area_id)
+
+    if status_filter:
+        query = query.filter(Service.status == status_filter.lower())
+
+    services = query.order_by(Service.id).all()
+    features = []
+
+    for s in services:
+        geom_dict = point_to_geojson_dict(s.latitude, s.longitude)
+        geom_obj = GeoJSONGeometry(**geom_dict) if geom_dict else None
+
+        cap_val = s.capacity_record.capacity if s.capacity_record else None
+        load_val = s.capacity_record.current_load if s.capacity_record else None
+
+        props = {
+            "id": s.id,
+            "name": s.name,
+            "category_id": s.category_id,
+            "category_code": s.category.code if s.category else "unknown",
+            "category_name": s.category.name if s.category else "Unknown",
+            "area_id": s.area_id,
+            "area_name": s.area.name if s.area else None,
+            "latitude": float(s.latitude),
+            "longitude": float(s.longitude),
+            "status": s.status,
+            "source_type": s.source_type,
+            "verification_status": s.verification_status,
+            "confidence_score": float(s.confidence_score),
+            "capacity": cap_val,
+            "current_load": load_val,
+            "operating_hours": s.operating_hours,
+        }
+
+        features.append(
+            GeoJSONFeature(
+                type="Feature",
+                id=s.id,
+                geometry=geom_obj,
+                properties=props,
+            )
+        )
+
+    return GeoJSONFeatureCollection(type="FeatureCollection", features=features)
 
 
 @router.get(

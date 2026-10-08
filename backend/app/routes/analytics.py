@@ -17,6 +17,10 @@ from app.schemas.analytics import (
     CategoryAnalyticsResponse,
     ServiceDesertItemResponse,
 )
+from app.schemas.rankings import (
+    UnderservedAreaRankingItem,
+    UnderservedRankingsResponse,
+)
 
 router = APIRouter(prefix="/analytics", tags=["Geospatial & Analytics Engine"])
 
@@ -186,3 +190,136 @@ def get_service_deserts(
     # Sort deserts by severity (lowest accessibility score first)
     deserts.sort(key=lambda d: d["accessibility_score"])
     return deserts
+
+
+@router.get(
+    "/rankings/underserved",
+    response_model=UnderservedRankingsResponse,
+    summary="Get ranked leaderboard of most underserved civic areas",
+)
+def get_underserved_rankings(
+    category_code: Optional[str] = Query(
+        None,
+        description="Filter ranking by specific service category (e.g. healthcare, education), or omit for composite ranking",
+    ),
+    limit: int = Query(
+        10,
+        ge=1,
+        le=100,
+        description="Maximum number of ranked areas to return (default 10)",
+    ),
+    min_gap: float = Query(
+        0.0,
+        ge=0.0,
+        le=100.0,
+        description="Minimum gap score threshold to be included in ranking (default 0.0)",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Ranks civic areas from most underserved to least underserved using existing Stage 3 analytics.
+    Powers the Core Dashboard's Top Underserved Localities widget and Map prioritization filters.
+    """
+    areas = db.query(GeographicArea).order_by(GeographicArea.id).all()
+    candidates_ranked = []
+
+    if category_code:
+        cat_obj = (
+            db.query(ServiceCategory)
+            .filter(ServiceCategory.code == category_code.lower())
+            .first()
+        )
+        if not cat_obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Service category with code '{category_code}' not found",
+            )
+
+        eval_label = cat_obj.code
+        for a in areas:
+            metrics = default_analytics_engine.analyze_area_category(db, a, cat_obj)
+            gap = float(metrics["gap_score"])
+            if gap >= min_gap:
+                candidates_ranked.append(
+                    {
+                        "area_id": a.id,
+                        "area_name": a.name,
+                        "area_type": a.area_type,
+                        "population": int(a.population),
+                        "accessibility_score": float(metrics["accessibility_score"]),
+                        "gap_score": gap,
+                        "desert_classification": metrics["service_desert_classification"],
+                        "category_evaluated": cat_obj.code,
+                        "most_critical_category": cat_obj.code,
+                        "nearest_service_name": metrics.get("nearest_service_name"),
+                        "service_pressure_category": metrics.get("service_pressure", {}).get("pressure_category"),
+                        "confidence_score": float(metrics.get("confidence_score", 1.0)),
+                    }
+                )
+    else:
+        eval_label = "composite"
+        for a in areas:
+            summary = default_analytics_engine.analyze_area_overall(db, a)
+            gap = float(summary["composite_gap_score"])
+            if gap >= min_gap:
+                breakdown = summary.get("category_breakdown") or []
+                worst_cat = None
+                worst_cat_gap = -1.0
+                for item in breakdown:
+                    if item["gap_score"] > worst_cat_gap:
+                        worst_cat_gap = item["gap_score"]
+                        worst_cat = item["category_code"]
+
+                candidates_ranked.append(
+                    {
+                        "area_id": a.id,
+                        "area_name": a.name,
+                        "area_type": a.area_type,
+                        "population": int(a.population),
+                        "accessibility_score": float(summary["composite_accessibility_score"]),
+                        "gap_score": gap,
+                        "desert_classification": summary["composite_desert_classification"],
+                        "category_evaluated": "composite",
+                        "most_critical_category": worst_cat,
+                        "nearest_service_name": None,
+                        "service_pressure_category": None,
+                        "confidence_score": 1.0,
+                    }
+                )
+
+    # Deterministic sorting: primary = gap_score descending, secondary = population descending, tertiary = area_id ascending
+    candidates_ranked.sort(key=lambda x: (-x["gap_score"], -x["population"], x["area_id"]))
+
+    # Apply limit
+    limited_candidates = candidates_ranked[:limit]
+
+    # Assign sequential ranks 1, 2, 3...
+    ranking_items = []
+    underserved_count = 0
+    for idx, item in enumerate(limited_candidates, start=1):
+        if item["desert_classification"] in ["Critical Desert", "Underserved", "At Risk"]:
+            underserved_count += 1
+        ranking_items.append(
+            UnderservedAreaRankingItem(
+                rank=idx,
+                area_id=item["area_id"],
+                area_name=item["area_name"],
+                area_type=item["area_type"],
+                population=item["population"],
+                accessibility_score=item["accessibility_score"],
+                gap_score=item["gap_score"],
+                desert_classification=item["desert_classification"],
+                category_evaluated=item["category_evaluated"],
+                most_critical_category=item["most_critical_category"],
+                nearest_service_name=item["nearest_service_name"],
+                service_pressure_category=item["service_pressure_category"],
+                confidence_score=item["confidence_score"],
+            )
+        )
+
+    return UnderservedRankingsResponse(
+        category_evaluated=eval_label,
+        total_areas_evaluated=len(areas),
+        underserved_areas_count=underserved_count,
+        rankings=ranking_items,
+    )

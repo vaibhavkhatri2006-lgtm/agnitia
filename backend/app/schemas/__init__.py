@@ -56,6 +56,17 @@ from app.schemas.infrastructure import (
     GeographicAreaItem,
 )
 
+from app.schemas.geojson import (
+    GeoJSONGeometry,
+    GeoJSONFeature,
+    GeoJSONFeatureCollection,
+)
+
+from app.schemas.rankings import (
+    UnderservedAreaRankingItem,
+    UnderservedRankingsResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -95,4 +106,9 @@ __all__ = [
     "ServiceCategoryItem",
     "ServiceItem",
     "GeographicAreaItem",
+    "GeoJSONGeometry",
+    "GeoJSONFeature",
+    "GeoJSONFeatureCollection",
+    "UnderservedAreaRankingItem",
+    "UnderservedRankingsResponse",
 ]

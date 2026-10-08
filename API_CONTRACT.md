@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.5.0
-## Stage: Stage 5 (Frontend Integration Support)
+## Version: 0.6.0
+## Stage: Stage 6 (Map + Core Dashboard Backend)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -198,7 +198,41 @@ All non-2xx responses follow a predictable JSON schema:
 
 ---
 
-#### 3. Localities & Geographic Areas (Stage 5)
+#### 3. Localities & Geographic Areas (Stage 5 & Stage 6)
+
+##### `GET /areas/geojson`
+- **Description:** Returns all administrative areas, wards, and neighbourhoods formatted as an RFC 7946 GeoJSON `FeatureCollection`. Ideal for direct rendering by frontend Leaflet or MapLibre `<GeoJSON />` layers.
+- **Query Parameters:**
+  - `area_type` (optional string): Filter by `city`, `ward`, `neighbourhood`
+  - `parent_id` (optional int): Filter by parent area ID
+  - `include_analytics` (optional boolean, default: `true`): Attaches composite accessibility, gap, and desert classification to feature properties
+- **Response `200 OK`**:
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 9,
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [[[[77.61, 12.965], [77.64, 12.965], [77.64, 12.99], [77.61, 12.99], [77.61, 12.965]]]]
+      },
+      "properties": {
+        "id": 9,
+        "name": "Highlands Valley",
+        "area_type": "neighbourhood",
+        "parent_id": 4,
+        "population": 22000,
+        "accessibility_score": 53.4,
+        "gap_score": 46.6,
+        "desert_classification": "At Risk",
+        "categories_evaluated": 5
+      }
+    }
+  ]
+}
+```
 
 ##### `GET /areas`
 - **Description:** Lists administrative areas, wards, and neighbourhoods for UI map boundaries and dropdowns.
@@ -216,6 +250,20 @@ All non-2xx responses follow a predictable JSON schema:
     "population": 22000
   }
 ]
+```
+
+##### `GET /areas/{area_id}/geojson`
+- **Description:** Returns single locality boundary and properties as an RFC 7946 GeoJSON `Feature`.
+- **Query Parameters:**
+  - `include_analytics` (optional boolean, default: `true`)
+- **Response `200 OK`**: Same schema as individual feature in `GET /areas/geojson`.
+- **Error Response `404 Not Found`**:
+```json
+{
+  "detail": "Geographic area with id 9999 not found",
+  "status_code": 404,
+  "error_code": "HTTP_404"
+}
 ```
 
 ##### `GET /areas/{area_id}`
@@ -241,7 +289,7 @@ All non-2xx responses follow a predictable JSON schema:
 
 ---
 
-#### 4. Services & Infrastructure (Stage 5)
+#### 4. Services & Infrastructure (Stage 5 & Stage 6)
 
 ##### `GET /services/categories`
 - **Description:** Returns all active civic service categories with codes and names.
@@ -257,6 +305,47 @@ All non-2xx responses follow a predictable JSON schema:
     "is_active": true
   }
 ]
+```
+
+##### `GET /services/geojson`
+- **Description:** Returns all cataloged facilities formatted as an RFC 7946 GeoJSON Point `FeatureCollection`. Ideal for direct consumption by Leaflet marker layers.
+- **Query Parameters:**
+  - `category_code` (optional string): e.g. `healthcare`, `education`, `transport`, `water`, `market`
+  - `area_id` (optional int): e.g. `9`
+  - `status` (optional string): `operational`, `degraded`, `temporarily_unavailable`, `closed`
+- **Response `200 OK`**:
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": 1,
+      "geometry": {
+        "type": "Point",
+        "coordinates": [77.59, 12.975]
+      },
+      "properties": {
+        "id": 1,
+        "name": "Central Metro Hospital",
+        "category_id": 1,
+        "category_code": "healthcare",
+        "category_name": "Healthcare",
+        "area_id": 6,
+        "area_name": "Downtown Core",
+        "latitude": 12.975,
+        "longitude": 77.59,
+        "status": "operational",
+        "source_type": "simulated_demo",
+        "verification_status": "verified",
+        "confidence_score": 0.98,
+        "capacity": 500,
+        "current_load": 380,
+        "operating_hours": "24/7 Emergency & Inpatient"
+      }
+    }
+  ]
+}
 ```
 
 ##### `GET /services`
@@ -429,6 +518,38 @@ The backend owns all civic computations, ensuring deterministic, reproducible sc
     "pressure_category": "Critical"
   }
 ]
+```
+
+##### `GET /analytics/rankings/underserved`
+- **Description:** Ranks civic areas from most underserved to least underserved using deterministic analytics. Powers the Core Dashboard's "Top Underserved Areas" leaderboard and map priority filters.
+- **Query Parameters:**
+  - `category_code` (optional string): e.g. `healthcare`, `education`, `transport`, `water`, `market` (omit for composite ranking across all categories)
+  - `limit` (optional int, default: `10`, range: `1` to `100`): Maximum number of ranked areas to return
+  - `min_gap` (optional float, default: `0.0`): Minimum gap score threshold to include
+- **Response `200 OK`**:
+```json
+{
+  "category_evaluated": "composite",
+  "total_areas_evaluated": 5,
+  "underserved_areas_count": 2,
+  "rankings": [
+    {
+      "rank": 1,
+      "area_id": 9,
+      "area_name": "Highlands Valley",
+      "area_type": "neighbourhood",
+      "population": 22000,
+      "accessibility_score": 53.4,
+      "gap_score": 46.6,
+      "desert_classification": "At Risk",
+      "category_evaluated": "composite",
+      "most_critical_category": "healthcare",
+      "nearest_service_name": null,
+      "service_pressure_category": null,
+      "confidence_score": 1.0
+    }
+  ]
+}
 ```
 
 ---
