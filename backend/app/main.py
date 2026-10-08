@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +11,8 @@ from app.routes.analytics import router as analytics_router
 from app.routes.decision import router as decision_router
 from app.routes.recommendations import router as recommendations_router
 from app.routes.simulations import router as simulations_router
+from app.routes.services import router as services_router
+from app.routes.areas import router as areas_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -22,6 +24,8 @@ app = FastAPI(
         {"name": "Root", "description": "Core platform and metadata"},
         {"name": "Health", "description": "Application & database health probes"},
         {"name": "Authentication & RBAC", "description": "User login, token issuance, and role-based access control"},
+        {"name": "Localities & Geographic Areas", "description": "Administrative boundaries, wards, and neighbourhoods metadata"},
+        {"name": "Services & Infrastructure", "description": "Civic service facilities, locations, and categories"},
         {"name": "Geospatial & Analytics Engine", "description": "Deterministic spatial accessibility, gap scoring, and service desert analytics"},
         {"name": "Decision & Candidate Engine", "description": "Candidate location identification, validation, and spatial allocation engine"},
         {"name": "Recommendation Engine", "description": "Deterministic multi-factor scoring and ranking of candidate intervention locations"},
@@ -40,6 +44,8 @@ app.add_middleware(
 
 # Register API Routers
 app.include_router(auth_router)
+app.include_router(areas_router)
+app.include_router(services_router)
 app.include_router(analytics_router)
 app.include_router(decision_router)
 app.include_router(recommendations_router)
@@ -50,12 +56,13 @@ app.include_router(simulations_router)
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    error_code = "INTERNAL_SERVER_ERROR" if exc.status_code == 500 else f"HTTP_{exc.status_code}"
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "detail": exc.detail,
             "status_code": exc.status_code,
-            "error_code": f"HTTP_{exc.status_code}",
+            "error_code": error_code,
         },
         headers=getattr(exc, "headers", None),
     )
@@ -85,6 +92,16 @@ async def general_exception_handler(request: Request, exc: Exception):
             "error_code": "INTERNAL_SERVER_ERROR",
         },
     )
+
+
+if settings.DEBUG:
+    @app.get("/test-error-500", include_in_schema=False)
+    def test_error_500():
+        """Debug endpoint for testing 500 error format handler."""
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal server error occurred.",
+        )
 
 
 # --- Root & Health Endpoints ---

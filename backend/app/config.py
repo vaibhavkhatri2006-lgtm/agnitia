@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -8,12 +8,13 @@ ROOT_DIR = BACKEND_DIR.parent
 
 class Settings(BaseSettings):
     APP_NAME: str = "CivicPulse API"
-    APP_VERSION: str = "0.2.0"
+    APP_VERSION: str = "0.5.0"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     BACKEND_HOST: str = "127.0.0.1"
     BACKEND_PORT: int = 8000
     DATABASE_URL: str = "sqlite:///./civicpulse.db"
+    FRONTEND_URL: Optional[str] = "http://localhost:5173"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
 
     # Authentication & JWT Configuration
@@ -29,9 +30,27 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        if not self.ALLOWED_ORIGINS:
-            return ["*"]
-        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
+        """
+        Parses allowed CORS origins safely without allowing unrestricted credentials.
+        Never emits ['*'] when credentials are enabled.
+        """
+        origins: List[str] = []
+        if self.ALLOWED_ORIGINS and self.ALLOWED_ORIGINS.strip() != "*":
+            origins.extend([
+                o.strip().rstrip("/")
+                for o in self.ALLOWED_ORIGINS.split(",")
+                if o.strip() and o.strip() != "*"
+            ])
+        if self.FRONTEND_URL and self.FRONTEND_URL.strip() != "*":
+            clean_frontend = self.FRONTEND_URL.strip().rstrip("/")
+            if clean_frontend and clean_frontend not in origins:
+                origins.append(clean_frontend)
+
+        # Fallback to standard safe development origins if empty
+        if not origins:
+            origins = ["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000"]
+
+        return origins
 
 
 settings = Settings()

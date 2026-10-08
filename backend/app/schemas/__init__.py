@@ -50,6 +50,12 @@ from app.schemas.future_risk import (
     FutureRiskResponse,
 )
 
+from app.schemas.infrastructure import (
+    ServiceCategoryItem,
+    ServiceItem,
+    GeographicAreaItem,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -86,4 +92,7 @@ __all__ = [
     "FutureRiskRequest",
     "AreaFutureRiskItem",
     "FutureRiskResponse",
+    "ServiceCategoryItem",
+    "ServiceItem",
+    "GeographicAreaItem",
 ]

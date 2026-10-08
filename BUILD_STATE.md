@@ -1,9 +1,10 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 4 (Decision Engine — 4A, 4B, 4C, 4D Complete)
+- **Current Stage**: Stage 5 (Frontend Integration Support)
 - **Status**: PASS
-- **Next Stage**: Stage 5
+- **API Integration**: Ready for Person 1 Frontend Connection
+- **Next Stage**: Stage 6
 
 ---
 
@@ -375,9 +376,78 @@
   - Backend startup / OpenAPI: PASS (19 API paths)
 
 - **Known Limitations**:
-  - AI planning agents, LLM natural language reports, community reporting workflow logic, and real-time frontend Scenario Lab belong to Stage 5.
+  - Live AI planning agents, LLM report narrative generation, and citizen reporting workflows belong to Stage 6.
 
 - **Next Stage**:
   - Stage 5
+
+---
+
+### Stage 5: Frontend Integration Support
+- **Result**: PASS
+- **API Integration Status**: Ready for Person 1's React Frontend Connection
+
+- **Features & Enhancements Implemented**:
+  1. **CORS & Environment Foundation**:
+     - Configured safe credentialed CORS in `app.config.Settings` and `app.main`.
+     - Supports `ALLOWED_ORIGINS` and `FRONTEND_URL` environment variables (defaulting to Vite dev port `http://localhost:5173`, `http://127.0.0.1:5173`, and `http://localhost:3000`).
+     - Hardened against unsafe unrestricted credentialed wildcards (`allow_origins=["*"]` strictly prevented when credentials are enabled).
+  2. **Standardized JSON Error Schema**:
+     - Globally unified error responses across all HTTP status codes:
+       - `400 Bad Request` (`HTTP_400`)
+       - `401 Unauthorized` (`HTTP_401`)
+       - `403 Forbidden` (`HTTP_403`)
+       - `404 Not Found` (`HTTP_404`)
+       - `422 Unprocessable Entity` (`VALIDATION_ERROR` with structured `"errors"` list)
+       - `500 Internal Server Error` (`INTERNAL_SERVER_ERROR`)
+     - Predictable format containing `detail`, `status_code`, and `error_code`.
+  3. **Locality & Infrastructure Endpoints**:
+     - `GET /areas`: Administrative boundaries and neighbourhoods listing.
+     - `GET /areas/{area_id}`: Locality metadata lookup.
+     - `GET /services`: Cataloged civic facilities with filters (`category_code`, `area_id`, `status`).
+     - `GET /services/{service_id}`: Facility detail lookup for map pins and resilience failure simulation.
+     - `GET /services/categories`: Active civic service categories list.
+  4. **Frontend-Safe Response Serialization**:
+     - Validated Pydantic models preventing invalid NaN/infinite floats, missing fields, or null pointer crashes.
+     - Safe handling of zero facilities in catchment (deserts return cleanly with indicators).
+  5. **Demo Mode Integrity**:
+     - 100% offline, reproducible execution with seeded SQLite/PostGIS database.
+     - Zero external network dependencies.
+
+- **Files Changed**:
+  - `backend/app/config.py`
+  - `backend/app/main.py`
+  - `backend/app/schemas/infrastructure.py`
+  - `backend/app/schemas/errors.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/services.py`
+  - `backend/app/routes/areas.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/tests/test_stage5.py`
+  - `.env.example`
+  - `backend/.env.example`
+  - `backend/.env`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-05.md`
+
+- **Checks Run**:
+  - Backend startup: PASS
+  - `/health` check: PASS
+  - Login & token issuance: PASS
+  - `/auth/me` inspection: PASS
+  - Invalid/expired token rejection (401): PASS
+  - Server-side RBAC enforcement (403): PASS
+  - Safe credentialed CORS: PASS
+  - Standard error structures (400, 401, 403, 404, 422, 500): PASS
+  - All core documented APIs: PASS
+  - Frontend-safe determinism: PASS
+  - Full regression test suite: PASS (90/90 passing)
+
+- **Known Limitations**:
+  - Real-time websocket subscriptions and external GIS tiles belong to later stages.
+
+- **Next Stage**:
+  - Stage 6
 
 

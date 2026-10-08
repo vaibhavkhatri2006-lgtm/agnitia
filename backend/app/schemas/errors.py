@@ -13,3 +13,4 @@ class ErrorDetail(BaseModel):
 class HTTPErrorResponse(BaseModel):
     detail: str = Field(..., description="Error detail message")
     error_code: Optional[str] = Field(None, description="Standard error identifier")
+    status_code: Optional[int] = Field(None, description="HTTP status code")
