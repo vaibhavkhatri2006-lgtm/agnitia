@@ -17,6 +17,14 @@ from app.schemas.geojson import (
 )
 from app.analytics.geojson import geometry_to_geojson_dict
 from app.analytics.engine import default_analytics_engine
+from app.analytics.multiscale import default_multiscale_service
+from app.schemas.multiscale import (
+    GeographicHierarchyNode,
+    HierarchyValidationReport,
+    HierarchyRelationshipValidationRequest,
+    HierarchyRelationshipValidationResponse,
+    MultiScaleScopesResponse,
+)
 
 router = APIRouter(prefix="/areas", tags=["Localities & Geographic Areas"])
 
@@ -125,6 +133,99 @@ def get_areas(
         )
         for a in areas
     ]
+
+
+@router.get(
+    "/scopes",
+    response_model=MultiScaleScopesResponse,
+    summary="Discover supported and unavailable geographic scales",
+)
+def get_geographic_scopes(
+    db: Session = Depends(get_db),
+):
+    """
+    Returns all recognized geographic scales (Local, Neighbourhood, Ward, City, Region, Country, Global)
+    and their active availability status in the current dataset without inventing synthetic data.
+    """
+    return default_multiscale_service.get_scope_availability(db)
+
+
+@router.get(
+    "/hierarchy",
+    response_model=List[GeographicHierarchyNode],
+    summary="Get full administrative geographic hierarchy tree",
+)
+def get_geographic_hierarchy(
+    db: Session = Depends(get_db),
+):
+    """
+    Returns the complete recursive geographic hierarchy from top-level root areas down to leaf units.
+    """
+    return default_multiscale_service.build_hierarchy_tree(db)
+
+
+@router.get(
+    "/hierarchy/validate",
+    response_model=HierarchyValidationReport,
+    summary="Validate parent-child geographic hierarchy integrity",
+)
+def validate_geographic_hierarchy(
+    db: Session = Depends(get_db),
+):
+    """
+    Audits the database for parent-child relationship integrity:
+    verifies parent existence, detects orphaned references, circular loops, and hierarchy scale ordering.
+    """
+    return default_multiscale_service.validate_hierarchy_integrity(db)
+
+
+@router.post(
+    "/hierarchy/validate-relationship",
+    response_model=HierarchyRelationshipValidationResponse,
+    summary="Validate relationship between parent and child administrative scales",
+)
+def validate_geographic_relationship(
+    payload: HierarchyRelationshipValidationRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Validates whether a proposed parent-child linkage conforms to civic hierarchy scale ordering rules.
+    """
+    p_type = payload.parent_type
+    c_type = payload.child_type
+
+    # If IDs are provided, lookup actual area types
+    if payload.parent_id and not p_type:
+        p_area = db.query(GeographicArea).filter_by(id=payload.parent_id).first()
+        if p_area:
+            p_type = p_area.area_type
+        else:
+            return HierarchyRelationshipValidationResponse(
+                is_valid=False,
+                reason=f"Parent area with id={payload.parent_id} does not exist in database.",
+                parent_type=None,
+                child_type=c_type,
+            )
+
+    if payload.child_id and not c_type:
+        c_area = db.query(GeographicArea).filter_by(id=payload.child_id).first()
+        if c_area:
+            c_type = c_area.area_type
+        else:
+            return HierarchyRelationshipValidationResponse(
+                is_valid=False,
+                reason=f"Child area with id={payload.child_id} does not exist in database.",
+                parent_type=p_type,
+                child_type=None,
+            )
+
+    is_valid, reason = default_multiscale_service.validate_relationship_types(p_type, c_type)
+    return HierarchyRelationshipValidationResponse(
+        is_valid=is_valid,
+        reason=reason,
+        parent_type=p_type,
+        child_type=c_type,
+    )
 
 
 @router.get(

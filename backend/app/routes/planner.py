@@ -16,6 +16,7 @@ from app.dependencies.auth import require_role
 from app.models.user import User
 from app.models import GeographicArea, ServiceCategory, Service, ServiceCapacity
 from app.analytics.engine import default_analytics_engine
+from app.analytics.multiscale import default_multiscale_service
 from app.decision.recommendation import default_recommendation_service
 from app.decision.simulation import default_simulation_service
 from app.schemas.planner import (
@@ -46,6 +47,7 @@ CORE_SERVICES = ["healthcare", "education", "transport", "water", "market"]
 def get_planner_underserved_rankings(
     limit: int = Query(10, ge=1, le=100, description="Max areas to return"),
     min_gap: float = Query(0.0, ge=0.0, le=100.0, description="Minimum gap score threshold"),
+    scope: Optional[str] = Query(None, description="Filter ranking by geographic scope: local, neighbourhood, ward, city, region, country, global"),
     current_user: User = Depends(require_role("authority", "admin")),
     db: Session = Depends(get_db),
 ):
@@ -55,8 +57,45 @@ def get_planner_underserved_rankings(
     """
     limit_val = int(limit.default if hasattr(limit, "default") else limit)
     min_gap_val = float(min_gap.default if hasattr(min_gap, "default") else min_gap)
+    scope_val = scope.default if hasattr(scope, "default") else scope
 
-    areas = db.query(GeographicArea).order_by(GeographicArea.id).all()
+    if scope_val:
+        norm_scope = default_multiscale_service.normalize_scope(scope_val)
+        if norm_scope in ["region", "country", "global"]:
+            return PlannerUnderservedRankingsResponse(
+                total_areas_evaluated=0,
+                underserved_count=0,
+                rankings=[],
+            )
+        elif norm_scope == "ward":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type.in_(["ward", "district"])
+            ).order_by(GeographicArea.id).all()
+        elif norm_scope == "neighbourhood":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == "neighbourhood"
+            ).order_by(GeographicArea.id).all()
+        elif norm_scope == "city":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == "city"
+            ).order_by(GeographicArea.id).all()
+        elif norm_scope == "local":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == "local"
+            ).order_by(GeographicArea.id).all()
+            if not areas:
+                return PlannerUnderservedRankingsResponse(
+                    total_areas_evaluated=0,
+                    underserved_count=0,
+                    rankings=[],
+                )
+        else:
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == norm_scope
+            ).order_by(GeographicArea.id).all()
+    else:
+        areas = db.query(GeographicArea).order_by(GeographicArea.id).all()
+
     ranked_candidates = []
 
     for a in areas:

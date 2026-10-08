@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.9.0
-## Stage: Stage 9 (Scenario Lab + Investment + Resilience)
+## Version: 0.10.0
+## Stage: Stage 10 (Multi-Scale Experience Backend)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -1453,6 +1453,197 @@ Enables comparative what-if scenario planning across baseline current state, sin
   - `service_type` (optional string, default: `"healthcare"`): `healthcare`, `education`, `transport`, `water`, `market`
   - `scope` (optional string, default: `"city"`): `"city"`, `"neighbourhoods"`, or specific area ID
 - **Response `200 OK`**: Same schema as `POST /simulations/scenarios`.
+
+---
+
+#### 13. Multi-Scale Experience & Geographic Hierarchy (Stage 10)
+
+Supports scale-aware analysis across recognized administrative tiers: Local, Neighbourhood, District/Ward, City, Region/State, Country, Global. Reuses existing spatial models and calculation engines. Returns explicit, structured no-data responses when higher geographic scales are unavailable.
+
+##### `GET /areas/scopes`
+- **Description:** Discovers supported and unavailable geographic scales in the current dataset.
+- **Response `200 OK`**:
+```json
+{
+  "supported_scopes": ["local", "neighbourhood", "ward", "city"],
+  "unavailable_scopes": ["region", "country", "global"],
+  "scopes": [
+    {
+      "scope": "local",
+      "display_name": "Local",
+      "available": true,
+      "area_count": 6,
+      "description": "Fine-grained demographic census blocks and population cells"
+    },
+    {
+      "scope": "neighbourhood",
+      "display_name": "Neighbourhood",
+      "available": true,
+      "area_count": 5,
+      "description": "Primary residential zones, communities, and neighbourhoods"
+    },
+    {
+      "scope": "ward",
+      "display_name": "District / Ward",
+      "available": true,
+      "area_count": 4,
+      "description": "Electoral administrative wards and municipal districts"
+    },
+    {
+      "scope": "city",
+      "display_name": "City",
+      "available": true,
+      "area_count": 1,
+      "description": "Consolidated municipal metropolitan urban boundary"
+    },
+    {
+      "scope": "region",
+      "display_name": "Region / State",
+      "available": false,
+      "area_count": 0,
+      "description": "Metropolitan regional planning authority or provincial state"
+    },
+    {
+      "scope": "country",
+      "display_name": "Country",
+      "available": false,
+      "area_count": 0,
+      "description": "National sovereign territory and federal infrastructure"
+    },
+    {
+      "scope": "global",
+      "display_name": "Global",
+      "available": false,
+      "area_count": 0,
+      "description": "International comparative indicators and cross-border standards"
+    }
+  ]
+}
+```
+
+##### `GET /areas/hierarchy`
+- **Description:** Returns the complete recursive geographic hierarchy tree from city root down to districts and neighbourhoods.
+- **Response `200 OK`**: `List[GeographicHierarchyNode]`
+```json
+[
+  {
+    "id": 1,
+    "name": "Metro City",
+    "area_type": "city",
+    "population": 72000,
+    "parent_id": null,
+    "children": [
+      {
+        "id": 2,
+        "name": "District 1 - Central Ward",
+        "area_type": "ward",
+        "population": 37000,
+        "parent_id": 1,
+        "children": [
+          {
+            "id": 6,
+            "name": "Downtown Core",
+            "area_type": "neighbourhood",
+            "population": 25000,
+            "parent_id": 2,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+##### `GET /areas/hierarchy/validate`
+- **Description:** Audits the database for parent-child relationship integrity: detects orphan references, circular loops, and verifies hierarchy scale ordering.
+- **Response `200 OK`**:
+```json
+{
+  "status": "valid",
+  "is_valid": true,
+  "total_areas": 10,
+  "root_areas_count": 1,
+  "max_depth": 3,
+  "levels_found": ["city", "neighbourhood", "ward"],
+  "valid_relationships_count": 9,
+  "orphan_count": 0,
+  "circular_references_count": 0,
+  "errors": []
+}
+```
+
+##### `POST /areas/hierarchy/validate-relationship`
+- **Description:** Tests whether a proposed parent-child linkage satisfies administrative hierarchy rules (e.g. child scale must be strictly lower than parent container scale).
+- **Request Body:**
+```json
+{
+  "parent_type": "city",
+  "child_type": "ward"
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "is_valid": true,
+  "reason": "Valid hierarchy relationship: 'ward' (level 3) can be nested under 'city' (level 4).",
+  "parent_type": "city",
+  "child_type": "ward"
+}
+```
+
+##### `GET /analytics/multiscale`
+- **Description:** Returns scope-aware civic analytics for a specified administrative scale. Returns structured no-data response if the requested scale is unpopulated.
+- **Query Parameters:**
+  - `scope` (required string, default: `"city"`): `local`, `neighbourhood`, `ward`, `city`, `region`, `country`, `global`
+  - `category_code` (optional string): Filter by specific civic service domain
+- **Response `200 OK` (Available Scope - e.g. `neighbourhood`):**
+```json
+{
+  "scope": "neighbourhood",
+  "available": true,
+  "status": "success",
+  "message": "Evaluated 5 areas at Neighbourhood scale",
+  "total_areas": 5,
+  "total_population": 92000,
+  "average_accessibility": 63.4,
+  "average_gap": 36.6,
+  "coverage_pct": 76.1,
+  "areas": [
+    {
+      "area_id": 6,
+      "name": "Downtown Core",
+      "area_type": "neighbourhood",
+      "population": 25000,
+      "parent_id": 2,
+      "parent_name": "District 1 - Central Ward",
+      "accessibility_score": 73.1,
+      "gap_score": 26.9,
+      "desert_classification": "Adequate",
+      "child_count": 0
+    }
+  ],
+  "is_demo_data": true,
+  "label": "Multi-Scale Geographic Analysis - Neighbourhood Level"
+}
+```
+- **Response `200 OK` (Unavailable Scope - e.g. `region`):**
+```json
+{
+  "scope": "region",
+  "available": false,
+  "status": "no_data",
+  "message": "Geographic scale 'region' is unavailable in the current municipal dataset. No official data exists at the Region tier. Supported active scales: local, neighbourhood, ward, city.",
+  "total_areas": 0,
+  "total_population": 0,
+  "average_accessibility": null,
+  "average_gap": null,
+  "coverage_pct": null,
+  "areas": [],
+  "is_demo_data": true,
+  "label": "Multi-Scale Analysis - Region Scale Unavailable"
+}
+```
 
 
 

@@ -96,6 +96,16 @@ from app.schemas.planner import (
     PlannerRecommendationsResponse,
     PlannerOverviewResponse,
 )
+from app.schemas.multiscale import (
+    GeographicHierarchyNode,
+    HierarchyValidationReport,
+    HierarchyRelationshipValidationRequest,
+    HierarchyRelationshipValidationResponse,
+    ScopeAvailabilityItem,
+    MultiScaleScopesResponse,
+    MultiScaleAreaSummary,
+    MultiScaleAnalyticsResponse,
+)
 
 __all__ = [
     "LoginRequest",
@@ -165,4 +175,12 @@ __all__ = [
     "PlannerRecommendationItem",
     "PlannerRecommendationsResponse",
     "PlannerOverviewResponse",
+    "GeographicHierarchyNode",
+    "HierarchyValidationReport",
+    "HierarchyRelationshipValidationRequest",
+    "HierarchyRelationshipValidationResponse",
+    "ScopeAvailabilityItem",
+    "MultiScaleScopesResponse",
+    "MultiScaleAreaSummary",
+    "MultiScaleAnalyticsResponse",
 ]

@@ -1,10 +1,10 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 9 (Scenario Lab + Investment + Resilience)
+- **Current Stage**: Stage 10 (Multi-Scale Experience Backend)
 - **Status**: PASS
-- **Scenario Lab APIs Ready**: Multi-facility scenario comparison, what-if intervention simulation, investment priority ranking, and facility failure/resilience simulation verified with deterministic calculations and zero database mutations.
-- **Next Stage**: Stage 10
+- **Multi-Scale APIs Ready**: Geographic hierarchy validation, tree inspection, scope availability discovery, scope-aware analytics aggregation, and explicit safe no-data responses across Local, Neighbourhood, District/Ward, City, Region/State, Country, and Global tiers.
+- **Next Stage**: Stage 11
 
 ---
 
@@ -648,6 +648,50 @@
 
 - **Next Stage**:
   - Stage 10
+
+---
+
+### Stage 10: Multi-Scale Experience Backend
+- **Result**: PASS
+- **Status**: Multi-Scale Geographic Analysis & Hierarchy Verification Fully Operational
+
+- **Implemented Geographic Levels**:
+  - Local (fine-grained population cells and census blocks)
+  - Neighbourhood (primary community residential zones)
+  - District / Ward (electoral administrative wards and municipal districts)
+  - City (consolidated metropolitan urban boundary)
+  - Region / State (metropolitan regional planning authority or provincial state)
+  - Country (national sovereign territory)
+  - Global (international comparative indicators)
+
+- **Supported vs Unavailable Data Scopes**:
+  - **Supported Scopes (Data Present)**: `local`, `neighbourhood`, `ward`, `city`
+  - **Unavailable Scopes (Data Absent)**: `region`, `country`, `global`
+  - Explicit, structured no-data responses returned for unavailable scales (`status: "no_data"`, `available: false`, without fabricating synthetic data).
+
+- **Multi-Scale APIs Implemented**:
+  - `GET /areas/scopes`: Discovers data availability for all canonical scales.
+  - `GET /areas/hierarchy`: Recursive geographic hierarchy tree.
+  - `GET /areas/hierarchy/validate`: Parent-child relationship integrity audit.
+  - `POST /areas/hierarchy/validate-relationship`: Scale ordering verification.
+  - `GET /analytics/multiscale`: Scope-aware analytics aggregation and safe no-data responses.
+  - `GET /analytics/rankings/underserved`: Scope-filtered underserved rankings.
+  - `GET /planner/rankings`: Scope-filtered authority planner rankings with RBAC.
+
+- **Checks Run**:
+  1. Switching scope changes metrics when the underlying data differs: **PASS**
+  2. Permissions are respected: **PASS**
+  3. API accepts and validates geographic hierarchy: **PASS**
+  4. Parent-child relationships are valid: **PASS**
+  5. Ranking works for each supported scope: **PASS**
+  6. Unavailable data returns a safe no-data response: **PASS**
+  - Directly affected regression tests: **PASS** (35/35 passing across `test_stage10`, `test_analytics`, `test_stage8`, `test_stage6`)
+
+- **Known Limitations**:
+  - Multi-scale demographic cross-boundary interpolation and spatial clipping for regional watersheds can be extended in future GIS expansions.
+
+- **Next Stage**:
+  - Stage 11
 
 
 

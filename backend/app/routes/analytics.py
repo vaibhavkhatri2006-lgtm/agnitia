@@ -21,6 +21,8 @@ from app.schemas.rankings import (
     UnderservedAreaRankingItem,
     UnderservedRankingsResponse,
 )
+from app.analytics.multiscale import default_multiscale_service
+from app.schemas.multiscale import MultiScaleAnalyticsResponse
 
 router = APIRouter(prefix="/analytics", tags=["Geospatial & Analytics Engine"])
 
@@ -193,6 +195,30 @@ def get_service_deserts(
 
 
 @router.get(
+    "/multiscale",
+    response_model=MultiScaleAnalyticsResponse,
+    summary="Get scope-aware analytics across administrative geographic levels",
+)
+def get_multiscale_analytics(
+    scope: str = Query(
+        "city",
+        description="Administrative scale: local, neighbourhood, ward, city, region, country, global",
+    ),
+    category_code: Optional[str] = Query(
+        None,
+        description="Optional filter by service category code",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns multi-scale civic analytics for the requested geographic scale.
+    Reuses existing analytics engine and returns explicit structured no-data response
+    when requested scale has no data.
+    """
+    return default_multiscale_service.analyze_scope(db, scope=scope, category_code=category_code)
+
+
+@router.get(
     "/rankings/underserved",
     response_model=UnderservedRankingsResponse,
     summary="Get ranked leaderboard of most underserved civic areas",
@@ -201,6 +227,10 @@ def get_underserved_rankings(
     category_code: Optional[str] = Query(
         None,
         description="Filter ranking by specific service category (e.g. healthcare, education), or omit for composite ranking",
+    ),
+    scope: Optional[str] = Query(
+        None,
+        description="Filter ranking by geographic scale: local, neighbourhood, ward, city, region, country, global",
     ),
     limit: int = Query(
         10,
@@ -220,7 +250,46 @@ def get_underserved_rankings(
     Ranks civic areas from most underserved to least underserved using existing Stage 3 analytics.
     Powers the Core Dashboard's Top Underserved Localities widget and Map prioritization filters.
     """
-    areas = db.query(GeographicArea).order_by(GeographicArea.id).all()
+    if scope:
+        norm_scope = default_multiscale_service.normalize_scope(scope)
+        if norm_scope in ["region", "country", "global"]:
+            # Explicit structured no-data response for unavailable scopes
+            return UnderservedRankingsResponse(
+                category_evaluated=category_code or "composite",
+                total_areas_evaluated=0,
+                underserved_areas_count=0,
+                rankings=[],
+            )
+        elif norm_scope == "ward":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type.in_(["ward", "district"])
+            ).order_by(GeographicArea.id).all()
+        elif norm_scope == "neighbourhood":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == "neighbourhood"
+            ).order_by(GeographicArea.id).all()
+        elif norm_scope == "city":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == "city"
+            ).order_by(GeographicArea.id).all()
+        elif norm_scope == "local":
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == "local"
+            ).order_by(GeographicArea.id).all()
+            if not areas:
+                return UnderservedRankingsResponse(
+                    category_evaluated=category_code or "composite",
+                    total_areas_evaluated=0,
+                    underserved_areas_count=0,
+                    rankings=[],
+                )
+        else:
+            areas = db.query(GeographicArea).filter(
+                GeographicArea.area_type == norm_scope
+            ).order_by(GeographicArea.id).all()
+    else:
+        areas = db.query(GeographicArea).order_by(GeographicArea.id).all()
+
     candidates_ranked = []
 
     if category_code:
