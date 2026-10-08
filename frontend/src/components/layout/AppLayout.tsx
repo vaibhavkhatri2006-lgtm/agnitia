@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, User as UserIcon, LayoutDashboard, Map as MapIcon, ShieldAlert, Activity, BookOpen } from 'lucide-react';
+import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, Activity, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AppLayout = () => {
