@@ -9,4 +9,10 @@
 ## Stage 1: Data Models
 - [x] Expected frontend data models
 
-... (Stages 2-12 pending)
+## Stage 2: Authentication & Routing
+- [x] Implement AuthContext
+- [x] Create Login UI
+- [x] Set up Protected Routes
+- [x] Implement AppLayout with role-aware navigation
+
+... (Stages 3-12 pending)
