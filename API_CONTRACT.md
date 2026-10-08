@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.6.0
-## Stage: Stage 6 (Map + Core Dashboard Backend)
+## Version: 0.9.0
+## Stage: Stage 9 (Scenario Lab + Investment + Resilience)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -1305,6 +1305,154 @@ High-level decision intelligence APIs for municipal planners. Requires `authorit
 - **Description:** Complete unified command center payload bundling rankings, cross-service comparison, capacity pressure, and top recommendation.
 - **Authentication:** Required (`authority`, `admin`).
 - **Response `200 OK`**: `PlannerOverviewResponse`
+
+---
+
+#### 12. Scenario Lab & Multi-Facility Comparison (Stage 9)
+
+Enables comparative what-if scenario planning across baseline current state, single new facility interventions, and multi-facility capital programs. All calculations are deterministic, in-memory, and guarantee zero database mutations.
+
+##### `POST /simulations/scenarios` (also accessible at `POST /decision/scenarios`)
+- **Description:** Compares baseline current infrastructure against one or multiple intervention scenarios. Supports both automated top-candidate scenarios and custom multi-facility definitions.
+- **Request Body (Custom Scenarios):**
+```json
+{
+  "service_type": "healthcare",
+  "scope": "city",
+  "scenarios": [
+    {
+      "scenario_id": "priority_clinic",
+      "name": "Priority Clinic (Highlands Valley)",
+      "description": "Construct primary healthcare clinic at centroid of Highlands Valley",
+      "facilities": [
+        {
+          "candidate_id": "cand-healthcare-9-centroid",
+          "proposed_capacity": 5000,
+          "proposed_name": "Highlands Valley Community Clinic"
+        }
+      ]
+    },
+    {
+      "scenario_id": "dual_hub_expansion",
+      "name": "Dual Health Hub Expansion",
+      "description": "Simultaneously deploy primary clinic in Highlands Valley and satellite dispensary in Lakeside",
+      "facilities": [
+        {
+          "candidate_id": "cand-healthcare-9-centroid",
+          "proposed_capacity": 5000
+        },
+        {
+          "latitude": 12.9500,
+          "longitude": 77.5800,
+          "proposed_capacity": 3000,
+          "proposed_name": "Lakeside Satellite Clinic"
+        }
+      ]
+    }
+  ]
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "scope": "Citywide",
+  "total_population": 92000,
+  "baseline": {
+    "scenario_id": "baseline",
+    "name": "Current State",
+    "description": "Baseline municipal infrastructure without additional facilities",
+    "facilities_added": 0,
+    "metrics": {
+      "accessibility_score": 65.4,
+      "gap_score": 34.6,
+      "service_coverage": 76.1,
+      "underserved_population": 22000,
+      "average_travel_time_minutes": 15.9
+    },
+    "impact_vs_baseline": {
+      "accessibility_improvement": 0.0,
+      "gap_reduction": 0.0,
+      "coverage_improvement": 0.0,
+      "underserved_population_reduction": 0,
+      "travel_time_saved_minutes": 0.0
+    }
+  },
+  "scenarios": [
+    {
+      "scenario_id": "baseline",
+      "name": "Current State",
+      "description": "Baseline municipal infrastructure without additional facilities",
+      "facilities_added": 0,
+      "metrics": {
+        "accessibility_score": 65.4,
+        "gap_score": 34.6,
+        "service_coverage": 76.1,
+        "underserved_population": 22000,
+        "average_travel_time_minutes": 15.9
+      },
+      "impact_vs_baseline": {
+        "accessibility_improvement": 0.0,
+        "gap_reduction": 0.0,
+        "coverage_improvement": 0.0,
+        "underserved_population_reduction": 0,
+        "travel_time_saved_minutes": 0.0
+      }
+    },
+    {
+      "scenario_id": "priority_clinic",
+      "name": "Priority Clinic (Highlands Valley)",
+      "description": "Construct primary healthcare clinic at centroid of Highlands Valley",
+      "facilities_added": 1,
+      "metrics": {
+        "accessibility_score": 81.1,
+        "gap_score": 18.9,
+        "service_coverage": 100.0,
+        "underserved_population": 0,
+        "average_travel_time_minutes": 2.1
+      },
+      "impact_vs_baseline": {
+        "accessibility_improvement": 15.7,
+        "gap_reduction": 15.7,
+        "coverage_improvement": 23.9,
+        "underserved_population_reduction": 22000,
+        "travel_time_saved_minutes": 13.8
+      }
+    },
+    {
+      "scenario_id": "dual_hub_expansion",
+      "name": "Dual Health Hub Expansion",
+      "description": "Simultaneously deploy primary clinic in Highlands Valley and satellite dispensary in Lakeside",
+      "facilities_added": 2,
+      "metrics": {
+        "accessibility_score": 85.3,
+        "gap_score": 14.7,
+        "service_coverage": 100.0,
+        "underserved_population": 0,
+        "average_travel_time_minutes": 1.7
+      },
+      "impact_vs_baseline": {
+        "accessibility_improvement": 19.9,
+        "gap_reduction": 19.9,
+        "coverage_improvement": 23.9,
+        "underserved_population_reduction": 22000,
+        "travel_time_saved_minutes": 14.2
+      }
+    }
+  ],
+  "best_scenario_id": "dual_hub_expansion",
+  "summary": "Compared 3 infrastructure scenarios for Healthcare. Highest access enhancement achieved by scenario 'dual_hub_expansion' (+19.9 points).",
+  "is_simulated": true,
+  "label": "Scenario Lab - Multi-Facility Intervention Comparison"
+}
+```
+
+##### `GET /simulations/scenarios` (also accessible at `GET /decision/scenarios`)
+- **Description:** Evaluates automated 3-tier comparative analysis: Current Baseline, 1 New Facility (top candidate), and 2 New Facilities (top 2 candidates).
+- **Query Parameters:**
+  - `service_type` (optional string, default: `"healthcare"`): `healthcare`, `education`, `transport`, `water`, `market`
+  - `scope` (optional string, default: `"city"`): `"city"`, `"neighbourhoods"`, or specific area ID
+- **Response `200 OK`**: Same schema as `POST /simulations/scenarios`.
 
 
 

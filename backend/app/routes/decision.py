@@ -11,6 +11,7 @@ from app.decision.candidates import default_candidate_service
 from app.decision.investment import default_investment_service
 from app.decision.resilience import default_resilience_service
 from app.decision.future_risk import default_future_risk_service
+from app.decision.simulation import default_simulation_service
 from app.schemas.decision import (
     CandidateGenerationRequest,
     CandidateGenerationResponse,
@@ -27,6 +28,10 @@ from app.schemas.resilience import (
 from app.schemas.future_risk import (
     FutureRiskRequest,
     FutureRiskResponse,
+)
+from app.schemas.simulation import (
+    ScenarioComparisonRequest,
+    ScenarioComparisonResponse,
 )
 
 router = APIRouter(prefix="/decision", tags=["Decision Engine"])
@@ -341,5 +346,81 @@ def estimate_future_risk_get(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
+        )
+
+
+# --- Scenario Comparison Endpoints (Stage 9 Scenario Lab) ---
+
+@router.post(
+    "/scenarios",
+    response_model=ScenarioComparisonResponse,
+    summary="Compare multi-facility intervention scenarios (POST)",
+)
+def compare_scenarios_decision_post(
+    payload: ScenarioComparisonRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Executes Scenario Lab comparative analysis:
+    Compares baseline current state against 1-facility and multiple-facility intervention scenarios.
+    Returns consistent, deterministic metrics and impact deltas without modifying the database.
+    """
+    try:
+        scenarios_input = [s.model_dump() for s in payload.scenarios] if payload.scenarios else None
+        result = default_simulation_service.compare_scenarios(
+            db=db,
+            service_type=payload.service_type,
+            scope=payload.scope or "city",
+            scenarios=scenarios_input,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Scenario comparison failed: {str(exc)}",
+        )
+
+
+@router.get(
+    "/scenarios",
+    response_model=ScenarioComparisonResponse,
+    summary="Compare multi-facility intervention scenarios (GET)",
+)
+def compare_scenarios_decision_get(
+    service_type: str = Query(
+        "healthcare",
+        description="Target service type: healthcare, education, transport, water, market",
+    ),
+    scope: Optional[str] = Query(
+        "city",
+        description="Analysis scope: 'city', 'neighbourhoods', or area ID",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    GET variant for Scenario Lab comparison across baseline, 1 new facility, and 2 new facilities.
+    """
+    try:
+        result = default_simulation_service.compare_scenarios(
+            db=db,
+            service_type=service_type,
+            scope=scope or "city",
+            scenarios=None,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Scenario comparison failed: {str(exc)}",
         )
 

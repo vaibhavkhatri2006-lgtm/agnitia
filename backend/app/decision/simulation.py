@@ -611,6 +611,175 @@ class InterventionSimulationService:
             "confidence": 0.90,
         }
 
+    # --- 11. Multi-Scenario Comparison (Stage 9 Scenario Lab) ---
+    def compare_scenarios(
+        self,
+        db: Session,
+        service_type: str,
+        scope: Optional[str] = "city",
+        scenarios: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Compares multiple intervention scenarios:
+        - Baseline: Current state (0 facilities added)
+        - Scenario 1: One new facility (top recommended candidate or custom)
+        - Scenario 2+: Multiple facilities (top 2+ candidates or custom)
+        Returns consistent, deterministic metrics for each scenario without modifying official data.
+        """
+        norm_service = self.validate_service_type(service_type)
+        category = db.query(ServiceCategory).filter_by(code=norm_service).first()
+        if not category:
+            raise ValueError(f"Service category '{norm_service}' not found in database")
+
+        scope_name, areas = self.resolve_scope_areas(db, scope, None)
+        total_population = sum(a.population for a in areas)
+
+        # 1. Baseline state (Current State)
+        baseline_metrics, _ = self.calculate_state_metrics(
+            db, areas=areas, category=category, additional_services=None
+        )
+
+        baseline_item = {
+            "scenario_id": "baseline",
+            "name": "Current State",
+            "description": "Baseline municipal infrastructure without additional facilities",
+            "facilities_added": 0,
+            "metrics": baseline_metrics,
+            "impact_vs_baseline": {
+                "accessibility_improvement": 0.0,
+                "gap_reduction": 0.0,
+                "coverage_improvement": 0.0,
+                "underserved_population_reduction": 0,
+                "travel_time_saved_minutes": 0.0,
+            },
+        }
+
+        # 2. Determine scenarios to evaluate
+        scenario_results = [baseline_item]
+        best_scenario_id = "baseline"
+        best_gain = -1.0
+
+        if not scenarios:
+            # Generate default 1-facility and 2-facility scenarios from top candidates
+            valid_cands = self.candidate_service.generate_candidates_for_service(
+                db, service_type=norm_service, include_rejected=False
+            )
+            scenario_specs = []
+            if len(valid_cands) >= 1:
+                scenario_specs.append({
+                    "scenario_id": "single_facility",
+                    "name": f"1 New Facility ({valid_cands[0].area_name})",
+                    "description": f"Add primary proposed facility at {valid_cands[0].candidate_id}",
+                    "facilities": [{"candidate_id": valid_cands[0].candidate_id}],
+                })
+            if len(valid_cands) >= 2:
+                scenario_specs.append({
+                    "scenario_id": "two_facilities",
+                    "name": f"2 New Facilities ({valid_cands[0].area_name} + {valid_cands[1].area_name})",
+                    "description": "Add 2 top prioritized facilities simultaneously",
+                    "facilities": [
+                        {"candidate_id": valid_cands[0].candidate_id},
+                        {"candidate_id": valid_cands[1].candidate_id},
+                    ],
+                })
+        else:
+            scenario_specs = scenarios
+
+        # 3. Simulate each scenario in-memory
+        for sc in scenario_specs:
+            sc_id = sc.get("scenario_id") if isinstance(sc, dict) else getattr(sc, "scenario_id", "custom_scenario")
+            if sc_id == "baseline":
+                continue
+
+            simulated_services: List[Service] = []
+            fac_inputs = sc.get("facilities", []) if isinstance(sc, dict) else getattr(sc, "facilities", [])
+            for idx, fac in enumerate(fac_inputs, start=1):
+                cand_id = fac.get("candidate_id") if isinstance(fac, dict) else getattr(fac, "candidate_id", None)
+                lat_in = fac.get("latitude") if isinstance(fac, dict) else getattr(fac, "latitude", None)
+                lon_in = fac.get("longitude") if isinstance(fac, dict) else getattr(fac, "longitude", None)
+                cap_in = fac.get("proposed_capacity") if isinstance(fac, dict) else getattr(fac, "proposed_capacity", 5000)
+                name_in = fac.get("proposed_name") if isinstance(fac, dict) else getattr(fac, "proposed_name", None)
+
+                lat, lon, target_area, res_cand_id = self.resolve_intervention_location(
+                    db,
+                    service_type=norm_service,
+                    candidate_id=cand_id,
+                    latitude=lat_in,
+                    longitude=lon_in,
+                )
+
+                fac_cap = max(1, cap_in or 5000)
+                fac_name = name_in or f"Simulated {category.name} #{idx} ({target_area.name})"
+                sim_svc = Service(
+                    id=-(idx + 100),
+                    name=fac_name,
+                    category_id=category.id,
+                    latitude=lat,
+                    longitude=lon,
+                    status="operational",
+                    source_type="simulation",
+                    confidence_score=0.90,
+                )
+                sim_svc.capacity_record = ServiceCapacity(
+                    id=-(idx + 100),
+                    service_id=-(idx + 100),
+                    capacity=fac_cap,
+                    current_load=0,
+                )
+                simulated_services.append(sim_svc)
+
+            # Recalculate metrics with all simulated facilities
+            after_metrics, _ = self.calculate_state_metrics(
+                db, areas=areas, category=category, additional_services=simulated_services
+            )
+
+            access_gain = round(max(0.0, after_metrics["accessibility_score"] - baseline_metrics["accessibility_score"]), 1)
+            gap_red = round(max(0.0, baseline_metrics["gap_score"] - after_metrics["gap_score"]), 1)
+            cov_gain = round(max(0.0, after_metrics["service_coverage"] - baseline_metrics["service_coverage"]), 1)
+            underserved_red = max(0, baseline_metrics["underserved_population"] - after_metrics["underserved_population"])
+            tt_saved = round(max(0.0, baseline_metrics["average_travel_time_minutes"] - after_metrics["average_travel_time_minutes"]), 1)
+
+            sc_name = sc.get("name") if isinstance(sc, dict) else getattr(sc, "name", sc_id)
+            sc_desc = sc.get("description") if isinstance(sc, dict) else getattr(sc, "description", None)
+
+            sc_result = {
+                "scenario_id": sc_id,
+                "name": sc_name,
+                "description": sc_desc,
+                "facilities_added": len(simulated_services),
+                "metrics": after_metrics,
+                "impact_vs_baseline": {
+                    "accessibility_improvement": access_gain,
+                    "gap_reduction": gap_red,
+                    "coverage_improvement": cov_gain,
+                    "underserved_population_reduction": underserved_red,
+                    "travel_time_saved_minutes": tt_saved,
+                },
+            }
+            scenario_results.append(sc_result)
+
+            if access_gain > best_gain:
+                best_gain = access_gain
+                best_scenario_id = sc_id
+
+        summary_text = (
+            f"Compared {len(scenario_results)} infrastructure scenarios for {category.name}. "
+            f"Highest access enhancement achieved by scenario '{best_scenario_id}' (+{max(0.0, best_gain):.1f} points)."
+        )
+
+        return {
+            "service_type": norm_service,
+            "scope": scope_name,
+            "total_population": total_population,
+            "baseline": baseline_item,
+            "scenarios": scenario_results,
+            "best_scenario_id": best_scenario_id,
+            "summary": summary_text,
+            "is_simulated": True,
+            "label": "Scenario Lab - Multi-Facility Intervention Comparison",
+        }
+
 
 # Singleton simulation service instance
 default_simulation_service = InterventionSimulationService()
+

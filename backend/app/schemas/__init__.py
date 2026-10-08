@@ -30,6 +30,12 @@ from app.schemas.simulation import (
     SimulationImpactMetrics,
     TargetAreaImpact,
     SimulationResponse,
+    ScenarioFacilityInput,
+    ScenarioDefinition,
+    ScenarioComparisonRequest,
+    ScenarioImpactVsBaseline,
+    ScenarioResultItem,
+    ScenarioComparisonResponse,
 )
 
 from app.schemas.investment import (
@@ -118,6 +124,12 @@ __all__ = [
     "SimulationImpactMetrics",
     "TargetAreaImpact",
     "SimulationResponse",
+    "ScenarioFacilityInput",
+    "ScenarioDefinition",
+    "ScenarioComparisonRequest",
+    "ScenarioImpactVsBaseline",
+    "ScenarioResultItem",
+    "ScenarioComparisonResponse",
     "InvestmentPriorityRequest",
     "RankedInvestmentItem",
     "InvestmentPriorityResponse",

@@ -1,10 +1,10 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 8 (Planner Command Center Backend)
+- **Current Stage**: Stage 9 (Scenario Lab + Investment + Resilience)
 - **Status**: PASS
-- **Planner APIs Ready**: Full command center suite (rankings, cross-service comparison, capacity pressure, equity & reality gap diagnostics, explainable recommendations, overview) verified with authority RBAC.
-- **Next Stage**: Stage 9
+- **Scenario Lab APIs Ready**: Multi-facility scenario comparison, what-if intervention simulation, investment priority ranking, and facility failure/resilience simulation verified with deterministic calculations and zero database mutations.
+- **Next Stage**: Stage 10
 
 ---
 
@@ -609,6 +609,45 @@
 
 - **Next Stage**:
   - Stage 9
+
+---
+
+### Stage 9: Scenario Lab + Investment + Resilience
+- **Result**: PASS
+- **Status**: Backend Scenario Lab, What-If Simulation, Investment Priority, and Resilience APIs Fully Operational
+
+- **Implemented & Finalized Capabilities**:
+  - **What-If Intervention Simulation (`POST & GET /simulations`)**:
+    - Simulates placement of a civic facility at candidate location or custom coordinates.
+    - Evaluates before/after accessibility, coverage, underserved population, and travel-time metrics.
+    - Guarantees zero official database mutation via isolated in-memory model instances.
+  - **Scenario Comparison (`POST & GET /simulations/scenarios`, `/decision/scenarios`)**:
+    - Compares baseline current infrastructure against single-facility and multi-facility configurations.
+    - Supports automated candidate comparison (Current, 1 Facility, 2 Facilities) and custom multi-facility definitions.
+    - Computes consistent, deterministic impact deltas against baseline.
+  - **Investment Priority Ranking (`POST & GET /decision/investment-priorities`)**:
+    - Ranks strategic interventions using multi-factor objective scoring: recommendation alignment, population affected, gap severity, and equity.
+    - Produces deterministic scores, priority tiers, and explainable rationale without financial speculation.
+  - **Facility Failure & Resilience Simulation (`POST & GET /decision/failure-simulation`)**:
+    - Models critical facility downtime/failure in-memory to calculate systemic resilience drop.
+    - Returns directly affected population, accessibility drop, coverage loss, newly underserved population, and single point of failure identification.
+  - **Future-Risk Projections (`POST & GET /decision/future-risk`)**:
+    - Proposes forward-looking demographic stress testing under configurable demand growth rates.
+
+- **Checks Run**:
+  1. Add-service simulation returns valid before/after metrics: PASS
+  2. Scenario comparison returns consistent results: PASS
+  3. Investment ranking is deterministic: PASS
+  4. Facility failure produces valid impact metrics: PASS
+  5. Invalid inputs are rejected: PASS
+  6. Simulation does not permanently modify official data: PASS
+  7. Relevant Stage 4 and Stage 8 regression tests pass: PASS (37/37 passing across test_stage9, test_simulations, test_stage4d, test_stage8)
+
+- **Known Issues / Limitations**:
+  - Multi-facility candidate portfolio optimization runs in-memory and scales linearly with number of evaluated scenarios.
+
+- **Next Stage**:
+  - Stage 10
 
 
 

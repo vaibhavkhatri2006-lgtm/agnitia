@@ -102,3 +102,60 @@ class SimulationResponse(BaseModel):
     explanation: str = Field(..., description="Natural language justification of intervention impact")
     primary_factors: List[str] = Field(..., description="Key drivers responsible for the improvement")
     confidence: float = Field(..., description="Data confidence score (0.0 to 1.0)")
+
+
+class ScenarioFacilityInput(BaseModel):
+    """Specification of a facility to add within a simulated scenario."""
+    candidate_id: Optional[str] = Field(None, description="Pre-calculated candidate location ID")
+    latitude: Optional[float] = Field(None, ge=-90.0, le=90.0, description="WGS84 latitude")
+    longitude: Optional[float] = Field(None, ge=-180.0, le=180.0, description="WGS84 longitude")
+    proposed_name: Optional[str] = Field(None, description="Descriptive facility name")
+    proposed_capacity: Optional[int] = Field(5000, ge=1, description="Nominal capacity units")
+
+
+class ScenarioDefinition(BaseModel):
+    """Definition of a scenario to evaluate."""
+    scenario_id: str = Field(..., description="Unique scenario ID: 'baseline', 'single_facility', 'multi_facility', etc.")
+    name: str = Field(..., description="Scenario display label")
+    description: Optional[str] = Field(None, description="Scenario description")
+    facilities: List[ScenarioFacilityInput] = Field(default_factory=list, description="List of simulated facilities to add")
+
+
+class ScenarioComparisonRequest(BaseModel):
+    """Request payload for multi-scenario comparative analysis."""
+    service_type: str = Field(..., description="Target service category (healthcare, education, transport, water, market)")
+    scope: Optional[str] = Field("city", description="Analysis scope: 'city', 'neighbourhoods', or area ID")
+    scenarios: Optional[List[ScenarioDefinition]] = Field(None, description="Custom scenario definitions or omit for standard 3-tier comparison")
+
+
+class ScenarioImpactVsBaseline(BaseModel):
+    """Measurable gains relative to the baseline state."""
+    accessibility_improvement: float = Field(..., description="Accessibility score gain (+ points)")
+    gap_reduction: float = Field(..., description="Gap score reduction (- points)")
+    coverage_improvement: float = Field(..., description="Coverage expansion (+ percentage points)")
+    underserved_population_reduction: int = Field(..., description="Reduction in underserved residents")
+    travel_time_saved_minutes: float = Field(..., description="Average travel time saved (minutes)")
+
+
+class ScenarioResultItem(BaseModel):
+    """Result metrics for a single scenario."""
+    scenario_id: str
+    name: str
+    description: Optional[str] = None
+    facilities_added: int
+    metrics: SimulationStateMetrics
+    impact_vs_baseline: ScenarioImpactVsBaseline
+
+
+class ScenarioComparisonResponse(BaseModel):
+    """Comparative response across baseline, single-facility, and multi-facility scenarios."""
+    service_type: str
+    scope: str
+    total_population: int
+    baseline: ScenarioResultItem
+    scenarios: List[ScenarioResultItem]
+    best_scenario_id: str
+    summary: str
+    is_simulated: bool = True
+    label: str = "Scenario Lab - Multi-Facility Intervention Comparison"
+
