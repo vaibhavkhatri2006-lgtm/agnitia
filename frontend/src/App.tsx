@@ -5,8 +5,8 @@ import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-
 import { MapPage } from './pages/MapPage';
+import { ReportPage } from './pages/ReportPage';
 
 function App() {
   return (
@@ -21,7 +21,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/map" element={<MapPage />} />
-              <Route path="/report" element={<div className="p-8">Report Reality (Stage 7)</div>} />
+              <Route path="/report" element={<ReportPage />} />
             </Route>
           </Route>
           

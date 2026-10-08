@@ -35,4 +35,10 @@
 - [x] Create CivicMap component (markers, popups, layers)
 - [x] Implement MapPage with layer controls
 
-... (Stages 7-12 pending)
+## Stage 7: Community Reporting
+- [x] Create Report Reality form UI
+- [x] Photo/evidence upload UI
+- [x] Implement role restrictions (Citizen/Community only)
+- [x] Verification/Trust Center UI contracts
+
+... (Stages 8-12 pending)
