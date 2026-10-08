@@ -30,4 +30,9 @@
 - [x] Loading / Error states
 - [x] Responsive navigation
 
-... (Stages 6-12 pending)
+## Stage 6: Map Experience
+- [x] Integrate React-Leaflet
+- [x] Create CivicMap component (markers, popups, layers)
+- [x] Implement MapPage with layer controls
+
+... (Stages 7-12 pending)

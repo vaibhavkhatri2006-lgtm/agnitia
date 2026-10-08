@@ -6,6 +6,8 @@ import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 
+import { MapPage } from './pages/MapPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -18,7 +20,7 @@ function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/map" element={<div className="p-8">Map Area (Stage 6)</div>} />
+              <Route path="/map" element={<MapPage />} />
               <Route path="/report" element={<div className="p-8">Report Reality (Stage 7)</div>} />
             </Route>
           </Route>
