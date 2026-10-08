@@ -15,6 +15,15 @@ from app.schemas.decision import (
     CandidateGenerationResponse,
 )
 
+from app.schemas.recommendation import (
+    FactorValues,
+    FactorWeights,
+    ScoredCandidateResponse,
+    ExcludedCandidateResponse,
+    RecommendationRequest,
+    RecommendationResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -31,4 +40,10 @@ __all__ = [
     "CandidateLocationResponse",
     "CandidateGenerationRequest",
     "CandidateGenerationResponse",
+    "FactorValues",
+    "FactorWeights",
+    "ScoredCandidateResponse",
+    "ExcludedCandidateResponse",
+    "RecommendationRequest",
+    "RecommendationResponse",
 ]

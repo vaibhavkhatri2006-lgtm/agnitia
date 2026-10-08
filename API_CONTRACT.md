@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.4.0
-## Stage: Stage 4A (Candidate Location Engine)
+## Version: 0.4.2
+## Stage: Stage 4B (Recommendation Scoring Engine)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -375,3 +375,87 @@ Generates and validates deterministic candidate locations for new civic faciliti
   "error_code": "HTTP_400"
 }
 ```
+
+---
+
+#### 5. Recommendation Scoring Engine (Stage 4B)
+
+Evaluates, scores, explains, and ranks candidate intervention locations deterministically based on multi-dimensional civic criteria.
+
+##### `POST /recommendations`
+- **Description:** Scores and ranks candidate intervention locations for a specified service type.
+- **Request Body:**
+```json
+{
+  "service_type": "healthcare",
+  "area_id": null,
+  "min_gap_threshold": 20.0,
+  "weights": null
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "total_candidates_evaluated": 6,
+  "valid_candidates_scored": 6,
+  "excluded_candidates_count": 0,
+  "weights_used": {
+    "gap_weight": 0.3,
+    "population_weight": 0.25,
+    "travel_need_weight": 0.15,
+    "capacity_pressure_weight": 0.1,
+    "equity_need_weight": 0.1,
+    "connectivity_weight": 0.05,
+    "confidence_weight": 0.05
+  },
+  "ranked_candidates": [
+    {
+      "candidate_id": "cand-healthcare-9-centroid",
+      "service_type": "healthcare",
+      "rank": 1,
+      "recommendation_score": 80.6,
+      "latitude": 12.984123,
+      "longitude": 77.632145,
+      "area_id": 9,
+      "area_name": "Highlands Valley",
+      "population": 22000,
+      "strategy": "centroid",
+      "confidence": 0.5,
+      "factor_values": {
+        "gap_severity": 86.9,
+        "population_affected": 88.0,
+        "travel_time_need": 100.0,
+        "capacity_pressure": 100.0,
+        "equity_need": 40.0,
+        "connectivity": 25.0,
+        "data_confidence": 50.0
+      },
+      "factor_weights": {
+        "gap_weight": 0.3,
+        "population_weight": 0.25,
+        "travel_need_weight": 0.15,
+        "capacity_pressure_weight": 0.1,
+        "equity_need_weight": 0.1,
+        "connectivity_weight": 0.05,
+        "confidence_weight": 0.05
+      },
+      "reasons": [
+        "Severe healthcare accessibility gap (86.9%) in Highlands Valley",
+        "Large affected population (22,000 residents)",
+        "Long estimated travel time with no reachable facility in catchment",
+        "Limited nearby capacity with critical service load pressure"
+      ]
+    }
+  ],
+  "excluded_candidates": []
+}
+```
+
+##### `GET /recommendations`
+- **Description:** GET endpoint for ranked recommendations.
+- **Query Parameters:**
+  - `service_type` (required string): `healthcare`, `education`, `transport`, `water`, `market`
+  - `area_id` (optional int)
+  - `min_gap_threshold` (optional float, default: `20.0`)
+- **Response `200 OK`**: Same schema as `POST /recommendations`.

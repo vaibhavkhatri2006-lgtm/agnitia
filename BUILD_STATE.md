@@ -1,9 +1,9 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 4A (Candidate Location Engine)
+- **Current Stage**: Stage 4B (Recommendation Scoring Engine)
 - **Status**: PASS
-- **Next Stage**: Stage 4B
+- **Next Stage**: Stage 4C
 
 ---
 
@@ -64,7 +64,7 @@
 - **Commands that Work**:
   - Migrations: `backend\.venv\Scripts\alembic.exe upgrade head`
   - Seeding: `backend\.venv\Scripts\python.exe backend\seed.py`
-  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (45/45 passing)
+  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (60/60 passing)
   - Backend Runner: `backend\.venv\Scripts\python.exe backend\run.py`
 
 - **Known Issues**:
@@ -157,8 +157,79 @@
   - Backend startup / OpenAPI: PASS
   - Full test suite: PASS (45/45 passing)
 
-- **Known Limitations**:
-  - Candidate ranking, scoring, multi-criteria optimization, and simulation are deferred to subsequent micro-stages (Stage 4B, 4C, 5).
-
 - **Next Stage**:
   - Stage 4B
+
+---
+
+### Stage 4B: Recommendation Scoring Engine
+- **Result**: PASS
+
+- **Recommendation Formula**:
+  - `Recommendation Score = (0.30 × Gap) + (0.25 × Population) + (0.15 × Travel Need) + (0.10 × Capacity Pressure) + (0.10 × Equity Need) + (0.05 × Connectivity) + (0.05 × Data Confidence)`
+  - Normalized strictly within 0.0 to 100.0.
+
+- **Factor Weights**:
+  - Gap Severity: 30%
+  - Population Affected: 25%
+  - Travel-Time Need: 15%
+  - Capacity Pressure: 10%
+  - Equity Need: 10%
+  - Connectivity: 5%
+  - Data Confidence: 5%
+  - Validated using Pydantic `RecommendationConfig` (weights sum strictly to 1.0).
+
+- **Normalization Method**:
+  - Gap: Clamped 0–100 deficit score.
+  - Population: Scaled against reference population (default 25,000 residents).
+  - Travel-Time Need: Inverse travel-time score (`100.0 - travel_time_score`), unreached = 100.0.
+  - Capacity Pressure: Service load mapping (`Critical` = 100, `High` = 75, `Moderate` = 50, `Low` = 20).
+  - Equity Need: Demographic vulnerability index (0–100).
+  - Connectivity: Transit accessibility index (0–100).
+  - Data Confidence: Telemetry/report agreement index (0–100).
+
+- **Ranking & Tie-Breaking Method**:
+  - Primary Sort: `recommendation_score` descending.
+  - Secondary Sort (Tie-breaker 1): `population` descending.
+  - Tertiary Sort (Tie-breaker 2): `candidate_id` ascending.
+  - Sequential ranks `1, 2, 3...` assigned.
+  - Invalid candidates excluded with recorded rejection reasons.
+
+- **API Endpoints**:
+  - `POST /recommendations`
+  - `GET /recommendations`
+
+- **Files Changed**:
+  - `backend/app/decision/recommendation.py`
+  - `backend/app/decision/__init__.py`
+  - `backend/app/schemas/recommendation.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/recommendations.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_recommendations.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04B.md`
+
+- **Checks Run**:
+  - Recommendation score calculation: PASS
+  - Weight validation: PASS
+  - Normalization: PASS
+  - Score range (0–100): PASS
+  - Ranking: PASS
+  - Tie-breaking: PASS
+  - Invalid candidates exclusion: PASS
+  - Missing data handling: PASS
+  - Explanation fields: PASS
+  - Service-type validation: PASS
+  - Stage 3 regression tests: PASS (14/14)
+  - Stage 4A regression tests: PASS (13/13)
+  - Backend startup / OpenAPI: PASS (15 endpoints)
+  - Seeded demo ranking: PASS (60/60 passing)
+
+- **Known Limitations**:
+  - Does not execute post-intervention simulation or budget optimization. Those belong to Stage 4C and Stage 5.
+
+- **Next Stage**:
+  - Stage 4C

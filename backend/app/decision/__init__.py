@@ -7,9 +7,19 @@ from app.decision.candidates import (
     CandidateLocationService,
     default_candidate_service,
 )
+from app.decision.recommendation import (
+    RecommendationConfig,
+    ScoredCandidate,
+    RecommendationScoringService,
+    default_recommendation_service,
+)
 
 __all__ = [
     "CandidateLocation",
     "CandidateLocationService",
     "default_candidate_service",
+    "RecommendationConfig",
+    "ScoredCandidate",
+    "RecommendationScoringService",
+    "default_recommendation_service",
 ]
