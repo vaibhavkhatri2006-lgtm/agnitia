@@ -53,4 +53,9 @@
 - [x] Impact cards & investment comparison
 - [x] Future-risk visualization
 
-... (Stages 10-12 pending)
+## Stage 10: Scale Selection
+- [x] Implement ScaleSelector component
+- [x] Connect scale states (Local to Global)
+- [x] Handle 'Data unavailable' state cleanly
+
+... (Stages 11-12 pending)

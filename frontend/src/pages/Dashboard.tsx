@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { CoreMetricsPanel } from '../components/metrics/CoreMetricsPanel';
 import { RecommendationPanel } from '../components/analysis/RecommendationPanel';
+import { ScaleSelector, AnalysisScale, DataUnavailableState } from '../components/analysis/ScaleSelector';
 
 export const Dashboard = () => {
   const { user } = useAuth();
+  const [scale, setScale] = useState<AnalysisScale>('City');
 
   const mockCoreMetrics = {
     accessibility: { id: 'm1', name: 'Accessibility Score', value: 72, label: '/ 100', confidence: 95 },
@@ -32,6 +34,8 @@ export const Dashboard = () => {
     }
   ];
 
+  const hasData = ['City', 'District/Ward'].includes(scale);
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
       <div className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -42,41 +46,47 @@ export const Dashboard = () => {
           </p>
         </div>
         <div className="flex gap-2">
-           <select className="border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white shadow-sm focus:ring-blue-500">
-             <option>Scale: City-wide</option>
-             <option>Scale: District</option>
-             <option>Scale: Neighbourhood</option>
-           </select>
+           <ScaleSelector 
+              value={scale} 
+              onChange={setScale} 
+              availableScales={['Local', 'Neighbourhood', 'District/Ward', 'City', 'Region/State', 'Country', 'Global']} 
+           />
         </div>
       </div>
 
-      {/* Core Metrics */}
-      <section>
-        <h2 className="text-xl font-bold text-slate-800 mb-4">City Overview</h2>
-        <CoreMetricsPanel {...mockCoreMetrics} />
-      </section>
+      {!hasData ? (
+        <DataUnavailableState scale={scale} />
+      ) : (
+        <>
+          {/* Core Metrics */}
+          <section>
+            <h2 className="text-xl font-bold text-slate-800 mb-4">{scale} Overview</h2>
+            <CoreMetricsPanel {...mockCoreMetrics} />
+          </section>
 
-      {/* Actionable Panels (Planner Focus) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <section>
-          <RecommendationPanel interventions={mockInterventions} />
-        </section>
-        
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-          <h3 className="text-lg font-bold text-slate-900 mb-4">Underserved Neighbourhoods Ranking</h3>
-          <div className="space-y-3">
-             {['East End', 'Northside', 'West Industrial'].map((hood, i) => (
-                <div key={hood} className="flex justify-between items-center p-3 border-b border-slate-100 last:border-0">
-                  <div className="flex gap-3 items-center">
-                    <span className="font-bold text-slate-400">#{i + 1}</span>
-                    <span className="font-semibold text-slate-700">{hood}</span>
-                  </div>
-                  <span className="text-sm font-medium bg-red-100 text-red-700 px-2.5 py-1 rounded-md">Critical Gap</span>
-                </div>
-             ))}
+          {/* Actionable Panels (Planner Focus) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <section>
+              <RecommendationPanel interventions={mockInterventions} />
+            </section>
+            
+            <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900 mb-4">Underserved Neighbourhoods Ranking</h3>
+              <div className="space-y-3">
+                 {['East End', 'Northside', 'West Industrial'].map((hood, i) => (
+                    <div key={hood} className="flex justify-between items-center p-3 border-b border-slate-100 last:border-0">
+                      <div className="flex gap-3 items-center">
+                        <span className="font-bold text-slate-400">#{i + 1}</span>
+                        <span className="font-semibold text-slate-700">{hood}</span>
+                      </div>
+                      <span className="text-sm font-medium bg-red-100 text-red-700 px-2.5 py-1 rounded-md">Critical Gap</span>
+                    </div>
+                 ))}
+              </div>
+            </section>
           </div>
-        </section>
-      </div>
+        </>
+      )}
     </div>
   );
 };
