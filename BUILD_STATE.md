@@ -41,4 +41,10 @@
 - [x] Implement role restrictions (Citizen/Community only)
 - [x] Verification/Trust Center UI contracts
 
-... (Stages 8-12 pending)
+## Stage 8: Planner Dashboard
+- [x] Build planner dashboard
+- [x] Underserved ranking & capacity pressure cards
+- [x] Reality gap & confidence panel
+- [x] Recommendation panel & UI
+
+... (Stages 9-12 pending)
