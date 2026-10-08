@@ -1,10 +1,10 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 7 (Community + Civic Trust)
+- **Current Stage**: Stage 8 (Planner Command Center Backend)
 - **Status**: PASS
-- **Civic Trust Workflow**: Community reports, multi-tier RBAC verification, transparent confidence scoring, and immutable audit trails verified.
-- **Next Stage**: Stage 8
+- **Planner APIs Ready**: Full command center suite (rankings, cross-service comparison, capacity pressure, equity & reality gap diagnostics, explainable recommendations, overview) verified with authority RBAC.
+- **Next Stage**: Stage 9
 
 ---
 
@@ -562,5 +562,53 @@
 
 - **Next Stage**:
   - Stage 8
+
+---
+
+### Stage 8: Planner Command Center Backend
+- **Result**: PASS
+- **Status**: Planner Command Center APIs Ready and Fully Operational
+
+- **Planner Command Center Capabilities**:
+  - **Underserved Ranking (`GET /planner/rankings`)**:
+    - Prioritized leaderboard ranking monitored localities by severity of unmet civic need.
+    - Fields: `rank`, `area`, `area_id`, `accessibility`, `gap`, `population`, `main_service_gap`, `priority` (Critical, High, Medium, Low).
+    - Deterministic sorting by `(-gap, -population, area_id)`.
+  - **Service Comparison (`GET /planner/service-comparison`)**:
+    - Direct multi-sector comparison across 5 core civic domains: `healthcare`, `education`, `transport`, `water`, `market`.
+    - Evaluates accessibility score, gap score, desert classification, distance (km), travel time (min), and capacity status.
+    - Supports both locality-specific and city-wide comparative aggregations.
+  - **Capacity Pressure (`GET /planner/capacity-pressure`)**:
+    - Evaluates demographic demand against nominal facility capacities.
+    - Fields: `demand`, `capacity`, `pressure` (demand/capacity ratio), `status` (Low, Moderate, High, Critical), and `utilization_pct`.
+    - Supports breakdown by sector and geographic locality.
+  - **Equity & Reality Gap Diagnostics (`GET /planner/equity-reality-gap`, `/planner/equity`, `/planner/reality-gap`)**:
+    - Demographic equity score with explainable contributing factors.
+    - Ground-truth reality gap tracking: nominal map access score vs real-world score adjusted for active verified community reports, reality gap discrepancy, and data confidence.
+  - **Ranked Recommendations (`GET /planner/recommendations`)**:
+    - Uses existing Stage 4 recommendation engine and Stage 4C simulation engine without duplicating code.
+    - Fields: `recommended_candidate` (spatial/demographic metadata), `score`, `rank`, `reasons` (explainable drivers), `expected_impact` (accessibility gain, coverage gain, impact score, summary), and `confidence`.
+  - **Unified Dashboard Overview (`GET /planner/overview`)**:
+    - Bundles rankings, service comparison, capacity pressure, and top recommended intervention for single-call dashboard hydration.
+  - **Server-Side RBAC Enforcement**:
+    - All `/planner/*` endpoints require `authority` or `admin` authentication roles.
+    - Restricted `citizen` accounts receive `403 Forbidden`.
+    - Unauthenticated requests receive `401 Unauthorized`.
+
+- **Checks Run**:
+  - Ranking API: PASS
+  - Service comparison API: PASS
+  - Capacity pressure API: PASS
+  - Equity & reality gap API: PASS
+  - Recommendation API: PASS
+  - Authority permission / RBAC check: PASS
+  - Previous-stage regression tests: PASS (24/24 passing)
+
+- **Known Issues / Limitations**:
+  - Multi-facility simultaneous portfolio optimization belongs to future enhancement phases.
+
+- **Next Stage**:
+  - Stage 9
+
 
 

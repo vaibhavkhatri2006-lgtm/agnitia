@@ -76,6 +76,21 @@ from app.schemas.reports import (
     ReportDetailResponse,
 )
 
+from app.schemas.planner import (
+    PlannerUnderservedAreaItem,
+    PlannerUnderservedRankingsResponse,
+    PlannerServiceComparisonItem,
+    PlannerServiceComparisonResponse,
+    PlannerCapacityPressureItem,
+    PlannerCapacityPressureResponse,
+    PlannerEquityRealityGapResponse,
+    PlannerCandidateInfo,
+    PlannerExpectedImpact,
+    PlannerRecommendationItem,
+    PlannerRecommendationsResponse,
+    PlannerOverviewResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -126,4 +141,16 @@ __all__ = [
     "AuditLogItem",
     "ReportResponse",
     "ReportDetailResponse",
+    "PlannerUnderservedAreaItem",
+    "PlannerUnderservedRankingsResponse",
+    "PlannerServiceComparisonItem",
+    "PlannerServiceComparisonResponse",
+    "PlannerCapacityPressureItem",
+    "PlannerCapacityPressureResponse",
+    "PlannerEquityRealityGapResponse",
+    "PlannerCandidateInfo",
+    "PlannerExpectedImpact",
+    "PlannerRecommendationItem",
+    "PlannerRecommendationsResponse",
+    "PlannerOverviewResponse",
 ]

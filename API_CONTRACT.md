@@ -1130,4 +1130,181 @@ Backend workflows for community-submitted civic service reports, server-side RBA
 - **Description:** Returns the immutable audit trail for a report.
 - **Response `200 OK`**: `List[AuditLogItem]`
 
+---
+
+#### 11. Planner Command Center (Stage 8)
+
+High-level decision intelligence APIs for municipal planners. Requires `authority` or `admin` authentication role. Returns `403 Forbidden` for standard `citizen` accounts.
+
+##### `GET /planner/rankings`
+- **Description:** Retrieves ranked underserved localities prioritizing intervention urgency.
+- **Authentication:** Required (`authority`, `admin`).
+- **Query Parameters:**
+  - `limit` (optional int, default: `10`): Max areas to return.
+  - `min_gap` (optional float, default: `0.0`): Minimum gap threshold.
+- **Response `200 OK`**:
+```json
+{
+  "total_areas_evaluated": 5,
+  "underserved_count": 3,
+  "rankings": [
+    {
+      "rank": 1,
+      "area": "Highlands Valley",
+      "area_id": 9,
+      "area_type": "neighbourhood",
+      "accessibility": 13.1,
+      "gap": 86.9,
+      "population": 22000,
+      "main_service_gap": "healthcare",
+      "priority": "Critical"
+    }
+  ]
+}
+```
+
+##### `GET /planner/service-comparison`
+- **Description:** Compares performance across core civic services (`healthcare`, `education`, `transport`, `water`, `market`).
+- **Authentication:** Required (`authority`, `admin`).
+- **Query Parameters:**
+  - `area_id` (optional int): Area filter or omit for city-wide comparative scan.
+- **Response `200 OK`**:
+```json
+{
+  "area_id": 9,
+  "area_name": "Highlands Valley",
+  "services": [
+    {
+      "service_type": "healthcare",
+      "service_name": "Healthcare",
+      "accessibility_score": 13.1,
+      "gap_score": 86.9,
+      "status": "Critical Desert",
+      "distance_km": 6.8,
+      "travel_time_min": 32.5,
+      "capacity_status": "Critical",
+      "rank": 1
+    },
+    {
+      "service_type": "water",
+      "service_name": "Water Supply & Sanitation",
+      "accessibility_score": 38.5,
+      "gap_score": 61.5,
+      "status": "Underserved",
+      "distance_km": 3.2,
+      "travel_time_min": 18.0,
+      "capacity_status": "Moderate",
+      "rank": 2
+    }
+  ]
+}
+```
+
+##### `GET /planner/capacity-pressure`
+- **Description:** Evaluates demand loads against nominal facility capacities.
+- **Authentication:** Required (`authority`, `admin`).
+- **Query Parameters:**
+  - `service_type` (optional string): e.g. `healthcare`, `water`.
+  - `area_id` (optional int): Specific area filter.
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "area_id": null,
+  "demand": 82000.0,
+  "capacity": 45000.0,
+  "pressure": 1.82,
+  "status": "High",
+  "items": [
+    {
+      "area_id": 9,
+      "area_name": "Highlands Valley",
+      "service_type": "healthcare",
+      "demand": 22000.0,
+      "capacity": 0.0,
+      "pressure": 999.0,
+      "status": "Critical",
+      "utilization_pct": 0.0
+    }
+  ]
+}
+```
+
+##### `GET /planner/equity-reality-gap`
+- **Description:** Diagnostic breakdown of demographic equity and ground-truth reality gap discrepancies.
+- **Authentication:** Required (`authority`, `admin`).
+- **Query Parameters:**
+  - `area_id` (optional int): Target area ID.
+  - `category_code` (optional string, default: `"healthcare"`).
+- **Aliases:** Also accessible at `GET /planner/equity` and `GET /planner/reality-gap`.
+- **Response `200 OK`**:
+```json
+{
+  "area_id": 9,
+  "area_name": "Highlands Valley",
+  "category_code": "healthcare",
+  "equity_score": 12.5,
+  "main_contributing_factors": [
+    "Severe demographic vulnerability concentration in census units",
+    "Substantial travel-time barrier to nearest emergency facility",
+    "Constrained transit connectivity in catchment zone"
+  ],
+  "map_access_score": 13.1,
+  "real_world_score": 13.1,
+  "reality_gap": 0.0,
+  "confidence": 0.50,
+  "active_reports_count": 0,
+  "divergence_level": "None"
+}
+```
+
+##### `GET /planner/recommendations`
+- **Description:** Returns ranked, explainable candidate intervention sites leveraging Stage 4 recommendation and simulation engines.
+- **Authentication:** Required (`authority`, `admin`).
+- **Query Parameters:**
+  - `service_type` (optional string, default: `"healthcare"`): `healthcare`, `education`, `transport`, `water`, `market`.
+  - `area_id` (optional int): Target area filter.
+  - `limit` (optional int, default: `5`).
+  - `min_gap_threshold` (optional float, default: `20.0`).
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "area_id": null,
+  "total_candidates_evaluated": 3,
+  "recommended_candidate": {
+    "candidate_id": "cand-healthcare-9-centroid",
+    "service_type": "healthcare",
+    "latitude": 12.984123,
+    "longitude": 77.632145,
+    "area_id": 9,
+    "area_name": "Highlands Valley",
+    "population": 22000,
+    "strategy": "centroid"
+  },
+  "score": 87.4,
+  "rank": 1,
+  "reasons": [
+    "Critical unmet service gap in target area Highlands Valley (Gap: 86.9%)",
+    "Substantial population served (22,000 residents)",
+    "Long estimated travel time with no reachable facility in catchment",
+    "High equity need and demographic vulnerability prioritization"
+  ],
+  "expected_impact": {
+    "accessibility_improvement": 64.2,
+    "coverage_gain": 18.5,
+    "impact_score": 72.7,
+    "summary": "+64.2 accessibility points in Highlands Valley"
+  },
+  "confidence": 0.85,
+  "candidates": [ ... ]
+}
+```
+
+##### `GET /planner/overview`
+- **Description:** Complete unified command center payload bundling rankings, cross-service comparison, capacity pressure, and top recommendation.
+- **Authentication:** Required (`authority`, `admin`).
+- **Response `200 OK`**: `PlannerOverviewResponse`
+
+
 
