@@ -6,9 +6,9 @@ CivicPulse is a modern civic infrastructure, urban accessibility, and community 
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, GeoAlchemy2, Shapely, Uvicorn
+- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, GeoAlchemy2, Shapely, PyJWT, Bcrypt, Uvicorn
 - **Database**: PostgreSQL + PostGIS (Production/Docker) / SQLite (Local Development)
-- **Frontend Scaffold**: Vite + React
+- **Frontend Scaffold**: Vite + React (Person 1)
 - **DevOps**: Docker & Docker Compose support
 
 ---
@@ -22,6 +22,10 @@ civicpulse/
 │   │   ├── versions/       # Schema version migration scripts
 │   │   └── env.py          # Migration execution environment
 │   ├── app/
+│   │   ├── core/           # Security, password hashing (bcrypt), JWT logic
+│   │   │   └── security.py
+│   │   ├── dependencies/   # Reusable route guards & RBAC authorization
+│   │   │   └── auth.py
 │   │   ├── models/         # SQLAlchemy 2.0 data models
 │   │   │   ├── types.py                # SafeGeometry spatial type decorator
 │   │   │   ├── data_source.py          # Data source & trust levels
@@ -32,15 +36,26 @@ civicpulse/
 │   │   │   ├── population_cell.py      # Spatial population & demographics
 │   │   │   ├── community_report.py     # Citizen issue reports
 │   │   │   ├── report_verification.py  # Verification audits
-│   │   │   └── audit_log.py            # Comprehensive mutation tracking
+│   │   │   ├── audit_log.py            # Comprehensive mutation tracking
+│   │   │   ├── role.py                 # RBAC Role and role_permissions
+│   │   │   ├── permission.py           # Granular permissions
+│   │   │   └── user.py                 # Users with password hashes & roles
+│   │   ├── routes/         # FastAPI API endpoints
+│   │   │   └── auth.py     # Authentication, /me, & RBAC test endpoints
+│   │   ├── schemas/        # Pydantic v2 request/response models
+│   │   │   ├── auth.py
+│   │   │   └── errors.py
+│   │   ├── services/       # Service layer business logic
+│   │   │   └── auth_service.py
 │   │   ├── config.py       # Pydantic Settings & environment variables
 │   │   ├── database.py     # SQLAlchemy engine, session, & health probe
-│   │   └── main.py         # FastAPI application with /health endpoint
+│   │   └── main.py         # FastAPI application with /health & routers
 │   ├── tests/
-│   │   ├── test_database.py # Stage 1 integrity, geometry, & query tests
+│   │   ├── test_auth.py     # Authentication, JWT, and RBAC tests
+│   │   ├── test_database.py # Database integrity, geometry, & query tests
 │   │   └── test_health.py   # Health check & root endpoint tests
 │   ├── seed.py             # Deterministic demo data seeding script
-│   ├── verify_stage1.py    # End-to-end verification suite
+│   ├── verify_stage1.py    # Stage 1 verification runner
 │   ├── run.py              # Backend startup entrypoint
 │   ├── start_db.py         # Database connection verification & probe
 │   ├── requirements.txt    # Python backend dependencies
@@ -76,77 +91,57 @@ cp backend/.env.example backend/.env
 ```
 
 Configuration options:
-- `DATABASE_URL`: Defaults to `sqlite:///./civicpulse.db` (or `postgresql+psycopg2://civicpulse:civicpulse_secret@localhost:5432/civicpulse_db`)
+- `DATABASE_URL`: Defaults to `sqlite:///./civicpulse.db` (or PostgreSQL connection string)
 - `BACKEND_HOST`: `127.0.0.1`
 - `BACKEND_PORT`: `8000`
-- `ENVIRONMENT`: `development`
+- `JWT_SECRET_KEY`: Secret signing key (32+ bytes)
+- `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`: 60
 
 ---
 
 ### 2. Database Migrations & Deterministic Seeding
 
-#### Run Migrations (Upgrade to Head)
 ```bash
-# Windows PowerShell
+# Run migrations (Windows PowerShell)
 .\backend\.venv\Scripts\alembic upgrade head
 
-# Linux / macOS
-./backend/.venv/bin/alembic upgrade head
-```
-
-#### Downgrade Migrations (Rollback to Base)
-```bash
-# Windows PowerShell
-.\backend\.venv\Scripts\alembic downgrade base
-
-# Linux / macOS
-./backend/.venv/bin/alembic downgrade base
-```
-
-#### Run Deterministic Seed
-Populates the database with reproducible simulated demonstration data (labeled `simulated_demo`):
-```bash
-# Windows PowerShell
+# Run deterministic demo seed (includes demo users and RBAC roles)
 .\backend\.venv\Scripts\python backend/seed.py
-
-# Linux / macOS
-./backend/.venv/bin/python backend/seed.py
-```
-
-#### Run End-to-End Verification Check
-```bash
-# Windows PowerShell
-.\backend\.venv\Scripts\python backend/verify_stage1.py
-
-# Linux / macOS
-./backend/.venv/bin/python backend/verify_stage1.py
 ```
 
 ---
 
-### 3. Backend Startup
+### 3. Demo Accounts for Testing
+
+| Role | Email | Password | Intended Capabilities |
+| :--- | :--- | :--- | :--- |
+| **Citizen** | `citizen@example.com` | `Citizen123!` | Public statistics, create civic reports |
+| **Community** | `community@example.com` | `Community123!` | Citizen + peer report verification |
+| **Authority** | `authority@example.com` | `Authority123!` | Municipal planner operations, official audits |
+| **Admin** | `admin@example.com` | `Admin123!` | Full system administration |
+| **Inactive** | `inactive@example.com` | `Inactive123!` | Disabled account for 403 test validation |
+
+---
+
+### 4. Backend Startup
 
 ```bash
-# Start backend server (Windows PowerShell)
+# Windows PowerShell
 .\backend\.venv\Scripts\python backend/run.py
-
-# Or via Uvicorn directly
-.\backend\.venv\Scripts\uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
 
-Backend will be available at:
+Available endpoints:
 - **API Root**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - **Health Check**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 - **Interactive Swagger Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **ReDoc Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+- **OpenAPI Schema**: [http://127.0.0.1:8000/openapi.json](http://127.0.0.1:8000/openapi.json)
 
 ---
 
-### 4. Running Backend Tests
+### 5. Running Automated Backend Tests
 
 ```bash
 # Windows PowerShell
 .\backend\.venv\Scripts\pytest backend/tests
-
-# Linux / macOS
-./backend/.venv/bin/pytest backend/tests
 ```

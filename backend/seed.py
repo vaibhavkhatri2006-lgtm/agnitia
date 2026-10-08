@@ -26,7 +26,11 @@ from app.models import (
     CommunityReport,
     ReportVerification,
     AuditLog,
+    Role,
+    Permission,
+    User,
 )
+from app.core.security import hash_password
 
 
 def seed_database(db: Session) -> dict:
@@ -534,15 +538,140 @@ def seed_database(db: Session) -> dict:
                 db.add(ver)
                 db.flush()
 
-    # 7. AUDIT LOG (Record seeding audit log)
+    # 7. RBAC ROLES & PERMISSIONS
+    permissions_data = [
+        {"code": "data:read", "description": "Read public civic infrastructure and statistics"},
+        {"code": "report:create", "description": "Submit citizen civic infrastructure reports"},
+        {"code": "report:verify_community", "description": "Participate in community verification reviews"},
+        {"code": "authority:operate", "description": "Execute urban planner and municipal operations"},
+        {"code": "report:verify_official", "description": "Submit official municipal report verification"},
+        {"code": "admin:manage", "description": "System administration, configuration, and user management"},
+    ]
+
+    for p_data in permissions_data:
+        existing_p = db.query(Permission).filter_by(code=p_data["code"]).first()
+        if not existing_p:
+            db.add(Permission(**p_data))
+    db.flush()
+
+    perm_map = {p.code: p for p in db.query(Permission).all()}
+
+    roles_data = [
+        {
+            "name": "citizen",
+            "description": "General citizen with public data access and report creation",
+            "perms": ["data:read", "report:create"],
+        },
+        {
+            "name": "community",
+            "description": "Community member with citizen capabilities and community verification rights",
+            "perms": ["data:read", "report:create", "report:verify_community"],
+        },
+        {
+            "name": "authority",
+            "description": "Municipal planner and official authority with operations and verification privileges",
+            "perms": ["data:read", "report:create", "report:verify_community", "report:verify_official", "authority:operate"],
+        },
+        {
+            "name": "admin",
+            "description": "System administrator with full administrative access",
+            "perms": ["data:read", "report:create", "report:verify_community", "report:verify_official", "authority:operate", "admin:manage"],
+        },
+    ]
+
+    for r_data in roles_data:
+        existing_r = db.query(Role).filter_by(name=r_data["name"]).first()
+        if not existing_r:
+            role_obj = Role(name=r_data["name"], description=r_data["description"])
+            role_obj.permissions = [perm_map[p_code] for p_code in r_data["perms"] if p_code in perm_map]
+            db.add(role_obj)
+        else:
+            # Sync permissions
+            role_obj = existing_r
+            role_obj.permissions = [perm_map[p_code] for p_code in r_data["perms"] if p_code in perm_map]
+    db.flush()
+
+    role_map = {r.name: r for r in db.query(Role).all()}
+
+    # 8. DEMO USERS (Deterministic credentials for testing)
+    demo_users_data = [
+        {
+            "email": "citizen@example.com",
+            "username": "citizen_demo",
+            "password": "Citizen123!",
+            "display_name": "Demo Citizen",
+            "role_name": "citizen",
+            "is_active": True,
+        },
+        {
+            "email": "community@example.com",
+            "username": "community_demo",
+            "password": "Community123!",
+            "display_name": "Demo Community Verifier",
+            "role_name": "community",
+            "is_active": True,
+        },
+        {
+            "email": "authority@example.com",
+            "username": "authority_demo",
+            "password": "Authority123!",
+            "display_name": "Demo Urban Planner",
+            "role_name": "authority",
+            "is_active": True,
+        },
+        {
+            "email": "admin@example.com",
+            "username": "admin_demo",
+            "password": "Admin123!",
+            "display_name": "Demo System Admin",
+            "role_name": "admin",
+            "is_active": True,
+        },
+        {
+            "email": "inactive@example.com",
+            "username": "inactive_demo",
+            "password": "Inactive123!",
+            "display_name": "Inactive Citizen",
+            "role_name": "citizen",
+            "is_active": False,
+        },
+    ]
+
+    for u_data in demo_users_data:
+        existing_u = db.query(User).filter_by(email=u_data["email"]).first()
+        role_obj = role_map.get(u_data["role_name"])
+        pwd_hash = hash_password(u_data["password"])
+
+        if not existing_u:
+            new_user = User(
+                email=u_data["email"],
+                username=u_data["username"],
+                password_hash=pwd_hash,
+                display_name=u_data["display_name"],
+                role_id=role_obj.id,
+                is_active=u_data["is_active"],
+            )
+            db.add(new_user)
+        else:
+            existing_u.password_hash = pwd_hash
+            existing_u.role_id = role_obj.id
+            existing_u.is_active = u_data["is_active"]
+    db.flush()
+
+    # 9. AUDIT LOG (Record seeding audit log)
     audit = AuditLog(
         actor_id="system_seed",
         action="seed",
         entity_type="database",
         entity_id=1,
-        reason="Stage 1 deterministic demo data generation",
+        reason="Stage 2 auth and demo data generation",
         previous_value=None,
-        new_value=json.dumps({"seeded_areas": len(neighbourhoods), "seeded_services": len(services_data)}),
+        new_value=json.dumps({
+            "seeded_areas": len(neighbourhoods),
+            "seeded_services": len(services_data),
+            "seeded_roles": len(roles_data),
+            "seeded_users": len(demo_users_data),
+        }),
     )
     db.add(audit)
 
@@ -557,6 +686,9 @@ def seed_database(db: Session) -> dict:
         "service_capacities": db.query(ServiceCapacity).count(),
         "community_reports": db.query(CommunityReport).count(),
         "report_verifications": db.query(ReportVerification).count(),
+        "roles": db.query(Role).count(),
+        "permissions": db.query(Permission).count(),
+        "users": db.query(User).count(),
         "audit_logs": db.query(AuditLog).count(),
     }
 

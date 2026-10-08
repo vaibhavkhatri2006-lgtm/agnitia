@@ -10,6 +10,9 @@ from app.models.population_cell import PopulationCell
 from app.models.community_report import CommunityReport
 from app.models.report_verification import ReportVerification
 from app.models.audit_log import AuditLog
+from app.models.role import Role, role_permissions
+from app.models.permission import Permission
+from app.models.user import User
 
 __all__ = [
     "Base",
@@ -23,4 +26,8 @@ __all__ = [
     "CommunityReport",
     "ReportVerification",
     "AuditLog",
+    "Role",
+    "role_permissions",
+    "Permission",
+    "User",
 ]

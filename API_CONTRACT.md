@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.1.0
-## Stage: Stage 0 (Project Foundation)
+## Version: 0.2.0
+## Stage: Stage 2 (Backend Core + Auth)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -12,68 +12,174 @@ This document establishes the official API contract between the CivicPulse backe
 - **Development:** `http://127.0.0.1:8000` (or `http://localhost:8000`)
 - **Interactive Documentation:** `http://127.0.0.1:8000/docs` (Swagger UI)
 - **ReDoc Documentation:** `http://127.0.0.1:8000/redoc`
+- **OpenAPI Schema:** `http://127.0.0.1:8000/openapi.json`
 
 ---
 
-### Stage 0 Endpoints
+### Standard HTTP Error Responses
 
-#### 1. Root Endpoint
-
-- **Method:** `GET`
-- **Path:** `/`
-- **Description:** Basic API metadata and links.
-
-##### Response `200 OK`
+All non-2xx responses follow a predictable JSON schema:
 ```json
 {
-  "app": "CivicPulse API",
-  "version": "0.1.0",
-  "environment": "development",
-  "message": "Welcome to the CivicPulse API. Visit /docs for OpenAPI documentation.",
-  "health_check": "/health"
+  "detail": "Description of error or failure reason",
+  "status_code": 401,
+  "error_code": "HTTP_401"
 }
 ```
 
+- **401 Unauthorized**: Missing, malformed, invalid signature, or expired JWT.
+- **403 Forbidden**: Authenticated caller lacks required role or permissions, or account is disabled.
+- **404 Not Found**: Resource does not exist.
+- **422 Unprocessable Entity**: Request payload failed Pydantic schema validation.
+- **500 Internal Server Error**: Unexpected failure without exposing internal stack traces.
+
 ---
 
-#### 2. Health Check
+### Endpoints
 
-- **Method:** `GET`
-- **Path:** `/health`
-- **Description:** Verifies operational readiness of the API and database connectivity probe (`SELECT 1`).
+#### 1. Root & Health
 
-##### Response `200 OK` (Healthy)
+##### `GET /`
+- **Description:** Root metadata and resource catalog.
+- **Response `200 OK`**:
+```json
+{
+  "app": "CivicPulse API",
+  "version": "0.2.0",
+  "environment": "development",
+  "message": "Welcome to the CivicPulse API. Visit /docs for OpenAPI documentation.",
+  "health_check": "/health",
+  "auth_login": "/auth/login"
+}
+```
+
+##### `GET /health`
+- **Description:** Live health check probe and database connectivity (`SELECT 1`).
+- **Response `200 OK`**:
 ```json
 {
   "status": "healthy",
   "app": "CivicPulse API",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "environment": "development",
   "database": "connected",
   "database_dialect": "sqlite"
 }
 ```
 
-##### Response `503 Service Unavailable` (Degraded / DB Disconnected)
+---
+
+#### 2. Authentication & RBAC
+
+##### `POST /auth/login`
+- **Description:** Authenticates user via email/username and password.
+- **Request Body:**
 ```json
 {
-  "status": "degraded",
-  "app": "CivicPulse API",
-  "version": "0.1.0",
-  "environment": "development",
-  "database": "disconnected",
-  "database_dialect": "unknown",
-  "database_error": "<error string>"
+  "email": "citizen@example.com",
+  "password": "Citizen123!"
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "access_token": "<jwt_bearer_token>",
+  "token_type": "bearer",
+  "expires_in": 3600,
+  "user": {
+    "id": 1,
+    "email": "citizen@example.com",
+    "username": "citizen_demo",
+    "display_name": "Demo Citizen",
+    "role": "citizen",
+    "permissions": ["data:read", "report:create"],
+    "is_active": true,
+    "created_at": "2026-10-08T18:00:00Z"
+  }
+}
+```
+- **Error Responses**:
+  - `401 Unauthorized`: "Incorrect email or password"
+  - `403 Forbidden`: "User account is inactive"
+
+---
+
+##### `GET /auth/me`
+- **Description:** Returns profile and server-validated permissions for the currently authenticated caller.
+- **Headers:** `Authorization: Bearer <jwt_token>`
+- **Response `200 OK`**:
+```json
+{
+  "id": 1,
+  "email": "citizen@example.com",
+  "username": "citizen_demo",
+  "display_name": "Demo Citizen",
+  "role": "citizen",
+  "permissions": ["data:read", "report:create"],
+  "is_active": true,
+  "created_at": "2026-10-08T18:00:00Z"
 }
 ```
 
 ---
 
-### Future Stages (Reserved Endpoints)
+##### `GET /auth/verify-role/authority`
+- **Description:** Protected test endpoint requiring `authority` or `admin` role.
+- **Headers:** `Authorization: Bearer <jwt_token>`
+- **Response `200 OK`** (for Authority / Admin):
+```json
+{
+  "status": "authorized",
+  "message": "Access granted for official authority operation to user 'authority@example.com'",
+  "role": "authority",
+  "user_id": 3,
+  "user_email": "authority@example.com",
+  "granted_permissions": ["data:read", "report:create", "report:verify_community", "report:verify_official", "authority:operate"]
+}
+```
+- **Response `403 Forbidden`** (for Citizen / Community):
+```json
+{
+  "detail": "Access denied: Operation requires one of the following roles: authority, admin. Current role: 'citizen'",
+  "status_code": 403,
+  "error_code": "HTTP_403"
+}
+```
 
-The following areas will be expanded in subsequent stages:
-- **Stage 1+**: Authentication (`/api/v1/auth/*`), User profiles, RBAC
-- **Stage 2+**: Civic infrastructure & GIS data endpoints (`/api/v1/gis/*`, `/api/v1/facilities/*`)
-- **Stage 3+**: Accessibility scoring & analytics (`/api/v1/analytics/*`)
-- **Stage 4+**: Community reporting & issues (`/api/v1/reports/*`)
-- **Stage 5+**: Recommendations & AI agent integration (`/api/v1/ai/*`)
+---
+
+##### `GET /auth/verify-role/admin`
+- **Description:** Protected test endpoint requiring `admin` role.
+- **Headers:** `Authorization: Bearer <jwt_token>`
+- **Response `200 OK`** (for Admin):
+```json
+{
+  "status": "authorized",
+  "message": "Access granted for system administrative operation to user 'admin@example.com'",
+  "role": "admin",
+  "user_id": 4,
+  "user_email": "admin@example.com",
+  "granted_permissions": ["data:read", "report:create", "report:verify_community", "report:verify_official", "authority:operate", "admin:manage"]
+}
+```
+- **Response `403 Forbidden`** (for non-admin roles).
+
+---
+
+##### `GET /auth/verify-role/community`
+- **Description:** Protected test endpoint requiring `community`, `authority`, or `admin` role.
+- **Headers:** `Authorization: Bearer <jwt_token>`
+- **Response `200 OK`** (for Community / Authority / Admin)
+- **Response `403 Forbidden`** (for Citizen)
+
+---
+
+### Demo Accounts for Testing
+
+| Role | Email | Password | Allowed Scopes |
+| :--- | :--- | :--- | :--- |
+| **Citizen** | `citizen@example.com` | `Citizen123!` | Public views, create civic reports |
+| **Community** | `community@example.com` | `Community123!` | Citizen + peer report verification |
+| **Authority** | `authority@example.com` | `Authority123!` | Planner operations, official verification |
+| **Admin** | `admin@example.com` | `Admin123!` | Full system administration |
+| **Inactive** | `inactive@example.com` | `Inactive123!` | Disabled (403 test account) |
