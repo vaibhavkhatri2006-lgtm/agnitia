@@ -63,4 +63,10 @@
 - [x] Run build verification
 - [x] Test complete frontend user journeys
 
-... (Stage 12 pending)
+## Stage 12: Polish & Presentation
+- [x] Final typography & responsive fixes
+- [x] Methodology page & 'Why CivicPulse'
+- [x] OSM attribution & demo-data disclaimer
+
+---
+*All 12 frontend UI stages completed.*

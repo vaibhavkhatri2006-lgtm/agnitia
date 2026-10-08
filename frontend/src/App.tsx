@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { MapPage } from './pages/MapPage';
 import { ReportPage } from './pages/ReportPage';
 import { ScenarioLabPage } from './pages/ScenarioLabPage';
+import { MethodologyPage } from './pages/MethodologyPage';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
               <Route path="/map" element={<MapPage />} />
               <Route path="/report" element={<ReportPage />} />
               <Route path="/scenario-lab" element={<ScenarioLabPage />} />
+              <Route path="/methodology" element={<MethodologyPage />} />
             </Route>
           </Route>
           

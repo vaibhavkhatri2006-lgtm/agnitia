@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, User as UserIcon, LayoutDashboard, Map as MapIcon, ShieldAlert, Activity } from 'lucide-react';
+import { LogOut, User as UserIcon, LayoutDashboard, Map as MapIcon, ShieldAlert, Activity, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AppLayout = () => {
@@ -17,6 +17,7 @@ export const AppLayout = () => {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Civic Map', path: '/map', icon: MapIcon },
+    { name: 'Methodology', path: '/methodology', icon: BookOpen },
     // Show 'Report Reality' only to citizens or community
     ...(user?.role === 'Citizen' || user?.role === 'Community' ? [{ name: 'Report Reality', path: '/report', icon: ShieldAlert }] : []),
     // Show 'Scenario Lab' only to authority or admin
@@ -77,8 +78,13 @@ export const AppLayout = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 w-full mx-auto relative overflow-hidden">
-        <Outlet />
+      <main className="flex-1 w-full mx-auto relative overflow-hidden flex flex-col">
+        <div className="bg-blue-600 text-white text-xs font-medium py-1.5 px-4 text-center">
+          <strong>Demo Environment:</strong> The data displayed in this application is simulated for demonstration purposes.
+        </div>
+        <div className="flex-1 overflow-auto">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
