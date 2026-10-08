@@ -8,6 +8,7 @@ from app.config import settings
 from app.database import check_database_connection
 from app.routes.auth import router as auth_router
 from app.routes.analytics import router as analytics_router
+from app.routes.decision import router as decision_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -20,6 +21,7 @@ app = FastAPI(
         {"name": "Health", "description": "Application & database health probes"},
         {"name": "Authentication & RBAC", "description": "User login, token issuance, and role-based access control"},
         {"name": "Geospatial & Analytics Engine", "description": "Deterministic spatial accessibility, gap scoring, and service desert analytics"},
+        {"name": "Decision & Candidate Engine", "description": "Candidate location identification, validation, and spatial allocation engine"},
     ],
 )
 
@@ -35,6 +37,7 @@ app.add_middleware(
 # Register API Routers
 app.include_router(auth_router)
 app.include_router(analytics_router)
+app.include_router(decision_router)
 
 
 # --- Global Exception Handlers for Consistent Error Responses ---

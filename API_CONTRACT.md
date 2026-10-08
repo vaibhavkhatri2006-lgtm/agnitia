@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.3.0
-## Stage: Stage 3 (Geospatial & Analytics Engine)
+## Version: 0.4.0
+## Stage: Stage 4A (Candidate Location Engine)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -312,4 +312,66 @@ The backend owns all civic computations, ensuring deterministic, reproducible sc
     "pressure_category": "Critical"
   }
 ]
+```
+
+---
+
+#### 4. Decision & Candidate Engine (Stage 4A)
+
+Generates and validates deterministic candidate locations for new civic facilities without deciding final recommendation rankings or simulations.
+
+##### `GET /decision/candidates`
+- **Description:** Generates deterministic candidate locations for a specified service type across qualifying underserved areas.
+- **Query Parameters:**
+  - `service_type` (required string): `healthcare`, `education`, `transport`, `water`, `market`
+  - `min_gap_threshold` (optional float, default: `20.0`): Minimum gap score for an area to qualify
+  - `max_accessibility` (optional float, default: `80.0`): Excludes areas already sufficiently served
+  - `include_rejected` (optional boolean, default: `false`): Whether to include rejected points
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "total_candidates": 3,
+  "valid_candidates_count": 3,
+  "rejected_candidates_count": 0,
+  "candidates": [
+    {
+      "candidate_id": "cand-healthcare-9-centroid",
+      "service_type": "healthcare",
+      "latitude": 12.984123,
+      "longitude": 77.632145,
+      "area_id": 9,
+      "area_name": "Highlands Valley",
+      "source_reason": "Geometric interior center of underserved area Highlands Valley (Gap: 86.9%)",
+      "current_accessibility": 13.1,
+      "population": 22000,
+      "current_gap": 86.9,
+      "nearby_service_count": 0,
+      "validity_status": "valid",
+      "strategy": "centroid",
+      "rejection_reason": null
+    }
+  ]
+}
+```
+
+##### `POST /decision/candidates/generate`
+- **Description:** Generates candidates using JSON payload configuration.
+- **Request Body:**
+```json
+{
+  "service_type": "water",
+  "min_gap_threshold": 20.0,
+  "max_accessibility": 80.0,
+  "include_rejected": false
+}
+```
+- **Response `200 OK`**: Same schema as `GET /decision/candidates`.
+- **Error Response `400 Bad Request`**: For unsupported service types.
+```json
+{
+  "detail": "Unsupported service type 'spaceship_depot'. Supported services: healthcare, education, transport, water, market",
+  "status_code": 400,
+  "error_code": "HTTP_400"
+}
 ```

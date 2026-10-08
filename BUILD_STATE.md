@@ -1,9 +1,9 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 3 (Geospatial / Analytics Engine)
+- **Current Stage**: Stage 4A (Candidate Location Engine)
 - **Status**: PASS
-- **Next Stage**: Stage 4
+- **Next Stage**: Stage 4B
 
 ---
 
@@ -64,7 +64,7 @@
 - **Commands that Work**:
   - Migrations: `backend\.venv\Scripts\alembic.exe upgrade head`
   - Seeding: `backend\.venv\Scripts\python.exe backend\seed.py`
-  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (32/32 passing)
+  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (45/45 passing)
   - Backend Runner: `backend\.venv\Scripts\python.exe backend\run.py`
 
 - **Known Issues**:
@@ -107,5 +107,58 @@
   - `GET /analytics/areas/{area_id}/category/{category_code}`
   - `GET /analytics/deserts`
 
+---
+
+### Stage 4A: Candidate Location Engine
+- **Result**: PASS
+
+- **Candidate Generation Architecture**:
+  - Backend service `CandidateLocationService` identifying candidate infrastructure placement locations for `healthcare`, `education`, `transport`, `water`, and `market`.
+  - Multi-strategy candidate derivation:
+    - `centroid`: Interior centroid or representative point of the underserved locality.
+    - `population_node`: Highest-density demand center derived from population cell geometries or community clusters.
+    - `gap_perimeter`: Coverage gap point maximizing geographic distance from existing facilities to eliminate dead zones.
+  - Underserved area filtering:
+    - Excludes areas with sufficient access (`Well Served`, accessibility $\ge 80\%$).
+    - Ranks qualifying areas by gap score descending.
+  - Spatial and geographic validation:
+    - Validates coordinate bounds (`[-90, 90]`, `[-180, 180]`), finiteness (non-NaN/inf).
+    - Validates Shapely geometric topology and polygon boundary containment with buffer tolerance.
+    - Fault-tolerant rejection handling: invalid coordinates or broken geometries are flagged as `rejected` with reasons without terminating the batch.
+  - Spatial deduplication:
+    - Suppresses duplicate or overlapping candidate points within 0.0001 degrees (~11 meters).
+  - Determinism:
+    - Guarantee 100% deterministic output order sorted by `(area_id, strategy, candidate_id)`.
+
+- **Endpoints Created**:
+  - `GET /decision/candidates`
+  - `POST /decision/candidates/generate`
+
+- **Files Changed**:
+  - `backend/app/decision/__init__.py`
+  - `backend/app/decision/candidates.py`
+  - `backend/app/schemas/decision.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/decision.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_candidates.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04A.md`
+
+- **Checks Run**:
+  - Candidate generation: PASS
+  - Invalid geometry handling: PASS
+  - Invalid coordinate handling: PASS
+  - Unsupported service handling: PASS
+  - Deterministic output: PASS
+  - Duplicate prevention: PASS
+  - Backend startup / OpenAPI: PASS
+  - Full test suite: PASS (45/45 passing)
+
+- **Known Limitations**:
+  - Candidate ranking, scoring, multi-criteria optimization, and simulation are deferred to subsequent micro-stages (Stage 4B, 4C, 5).
+
 - **Next Stage**:
-  - Stage 4
+  - Stage 4B

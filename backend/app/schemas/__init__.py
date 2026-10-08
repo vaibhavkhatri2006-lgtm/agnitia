@@ -9,6 +9,12 @@ from app.schemas.analytics import (
     AnalyticsConfigResponse,
 )
 
+from app.schemas.decision import (
+    CandidateLocationResponse,
+    CandidateGenerationRequest,
+    CandidateGenerationResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -22,4 +28,7 @@ __all__ = [
     "AreaSummaryAnalyticsResponse",
     "ServiceDesertItemResponse",
     "AnalyticsConfigResponse",
+    "CandidateLocationResponse",
+    "CandidateGenerationRequest",
+    "CandidateGenerationResponse",
 ]
