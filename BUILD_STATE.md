@@ -1,9 +1,9 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 2 (Backend Core + Auth)
+- **Current Stage**: Stage 3 (Geospatial / Analytics Engine)
 - **Status**: PASS
-- **Next Stage**: Stage 3
+- **Next Stage**: Stage 4
 
 ---
 
@@ -64,11 +64,48 @@
 - **Commands that Work**:
   - Migrations: `backend\.venv\Scripts\alembic.exe upgrade head`
   - Seeding: `backend\.venv\Scripts\python.exe backend\seed.py`
-  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (18/18 passing)
+  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (32/32 passing)
   - Backend Runner: `backend\.venv\Scripts\python.exe backend\run.py`
 
 - **Known Issues**:
   - None. Server-side RBAC and token validation fully operational.
 
+---
+
+### Stage 3: Geospatial / Analytics Engine
+- **Result**: PASS
+
+- **Analytics Architecture**:
+  - Backend-owned deterministic civic calculation engine converting spatial, service, demand, capacity, and transport data into multi-dimensional accessibility metrics.
+  - Centralized, validated `AnalyticsConfig` governing:
+    - 30% Travel Time Score
+    - 20% Service Availability Score
+    - 20% Capacity Score
+    - 15% Transport Connectivity Score
+    - 15% Equity Score
+  - Deterministic distance via Haversine great-circle calculation and centroid extraction (WKT and GeoJSON).
+  - Pluggable `RoutingProvider` abstraction with `DeterministicRoutingProvider` using configurable transit and walking speed approximations.
+  - Operational availability scoring:
+    - `operational`: 100, `limited`: 60, `degraded`: 50, `temporarily_unavailable`: 20, `closed`: 0
+  - Service pressure calculation (`Demand / Available Capacity`) with categorical classification:
+    - `Low`, `Moderate`, `High`, `Critical`
+    - Graceful zero and missing capacity handling without division by zero.
+  - Baseline service desert classifications:
+    - 80–100: Well Served
+    - 60–79: Adequate
+    - 40–59: At Risk
+    - 20–39: Underserved
+    - 0–19: Critical Desert
+  - Deterministic Gap Score:
+    - `Gap Score = 100 - Accessibility Score` (guaranteed `0 <= Gap Score <= 100`)
+  - Ground truth integration calculating **Confidence Score** and **Reality Gap** from active citizen and community reports.
+
+- **Endpoints Created**:
+  - `GET /analytics/config`
+  - `GET /analytics/areas`
+  - `GET /analytics/areas/{area_id}`
+  - `GET /analytics/areas/{area_id}/category/{category_code}`
+  - `GET /analytics/deserts`
+
 - **Next Stage**:
-  - Stage 3
+  - Stage 4

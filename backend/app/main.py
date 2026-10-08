@@ -7,6 +7,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.config import settings
 from app.database import check_database_connection
 from app.routes.auth import router as auth_router
+from app.routes.analytics import router as analytics_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -18,6 +19,7 @@ app = FastAPI(
         {"name": "Root", "description": "Core platform and metadata"},
         {"name": "Health", "description": "Application & database health probes"},
         {"name": "Authentication & RBAC", "description": "User login, token issuance, and role-based access control"},
+        {"name": "Geospatial & Analytics Engine", "description": "Deterministic spatial accessibility, gap scoring, and service desert analytics"},
     ],
 )
 
@@ -32,6 +34,7 @@ app.add_middleware(
 
 # Register API Routers
 app.include_router(auth_router)
+app.include_router(analytics_router)
 
 
 # --- Global Exception Handlers for Consistent Error Responses ---
