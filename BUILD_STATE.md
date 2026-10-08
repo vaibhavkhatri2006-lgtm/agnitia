@@ -20,4 +20,9 @@
 - [x] Create CoreMetricsPanel for Accessibility, Gap, Equity, Confidence, Reality Gap, Service Pressure
 - [x] Ensure Frontend does not compute analytics (delegated to backend)
 
-... (Stages 4-12 pending)
+## Stage 4: Analysis & Simulation UI
+- [x] Build UI for recommendations & ranking
+- [x] Build UI for impact & simulation (before/after)
+- [x] Build UI for investment priority, resilience, future-risk
+
+... (Stages 5-12 pending)
