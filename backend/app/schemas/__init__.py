@@ -106,6 +106,15 @@ from app.schemas.multiscale import (
     MultiScaleAreaSummary,
     MultiScaleAnalyticsResponse,
 )
+from app.schemas.real_data import (
+    CivicPulseModeResponse,
+    CivicPulseModeUpdateRequest,
+    OSMImportRequest,
+    OSMImportSummary,
+    OSMImportResponse,
+    OSMCacheStatsResponse,
+    ServiceProvenanceResponse,
+)
 
 __all__ = [
     "LoginRequest",
@@ -183,4 +192,11 @@ __all__ = [
     "MultiScaleScopesResponse",
     "MultiScaleAreaSummary",
     "MultiScaleAnalyticsResponse",
+    "CivicPulseModeResponse",
+    "CivicPulseModeUpdateRequest",
+    "OSMImportRequest",
+    "OSMImportSummary",
+    "OSMImportResponse",
+    "OSMCacheStatsResponse",
+    "ServiceProvenanceResponse",
 ]

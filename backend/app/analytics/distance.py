@@ -115,5 +115,91 @@ class DeterministicRoutingProvider(RoutingProvider):
         }
 
 
-# Singleton default routing provider
-default_routing_provider = DeterministicRoutingProvider()
+class OSRMRoutingProvider(RoutingProvider):
+    """
+    Routing provider that queries an OSRM instance when configured and enabled.
+    Gracefully falls back to DeterministicRoutingProvider on any failure, timeout, or error.
+    Clearly labels estimated travel times and provider provenance.
+    """
+
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        timeout_seconds: float = 3.0,
+        fallback_provider: Optional[RoutingProvider] = None,
+    ):
+        self.base_url = base_url
+        self.timeout_seconds = timeout_seconds
+        self.fallback_provider = fallback_provider or DeterministicRoutingProvider()
+
+    def estimate_travel(
+        self,
+        origin_lat: float,
+        origin_lon: float,
+        dest_lat: float,
+        dest_lon: float,
+        mode: str = "transit",
+    ) -> Dict[str, Any]:
+        # If not configured, immediately use deterministic fallback
+        if not self.base_url:
+            res = self.fallback_provider.estimate_travel(origin_lat, origin_lon, dest_lat, dest_lon, mode)
+            res["provider"] = "deterministic_approximation"
+            return res
+
+        # Map mode to OSRM profile (car, foot)
+        profile = "foot" if mode == "walking" else "car"
+        direct_distance_km = haversine_distance_km(origin_lat, origin_lon, dest_lat, dest_lon)
+
+        try:
+            import httpx
+
+            url = f"{self.base_url.rstrip('/')}/route/v1/{profile}/{origin_lon},{origin_lat};{dest_lon},{dest_lat}?overview=false"
+            with httpx.Client(timeout=self.timeout_seconds) as client:
+                resp = client.get(url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("code") == "Ok" and data.get("routes"):
+                        route = data["routes"][0]
+                        duration_sec = route.get("duration", 0.0)
+                        distance_m = route.get("distance", 0.0)
+                        return {
+                            "direct_distance_km": round(direct_distance_km, 3),
+                            "estimated_network_distance_km": round(distance_m / 1000.0, 3),
+                            "estimated_travel_time_minutes": round(max(1.0, duration_sec / 60.0), 1),
+                            "mode": mode,
+                            "is_estimate": True,
+                            "provider": "osrm",
+                            "osrm_profile": profile,
+                        }
+        except Exception:
+            # Graceful fallback on network timeout, connection error, etc.
+            pass
+
+        # Fallback to deterministic approximation
+        res = self.fallback_provider.estimate_travel(origin_lat, origin_lon, dest_lat, dest_lon, mode)
+        res["provider"] = "fallback_deterministic"
+        res["provider_warning"] = "OSRM routing unavailable or failed; deterministic fallback used"
+        return res
+
+
+default_deterministic_routing_provider = DeterministicRoutingProvider()
+
+
+def get_routing_provider() -> RoutingProvider:
+    """Returns active routing provider based on system settings."""
+    try:
+        from app.config import settings
+
+        if settings.USE_OSRM and settings.OSRM_BASE_URL:
+            return OSRMRoutingProvider(
+                base_url=settings.OSRM_BASE_URL,
+                timeout_seconds=settings.OSRM_TIMEOUT_SECONDS,
+                fallback_provider=default_deterministic_routing_provider,
+            )
+    except Exception:
+        pass
+    return default_deterministic_routing_provider
+
+
+# Default active routing provider (dispatches to OSRM if configured or deterministic fallback)
+default_routing_provider = default_deterministic_routing_provider

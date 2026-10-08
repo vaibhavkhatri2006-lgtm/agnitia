@@ -1,10 +1,10 @@
 # CivicPulse Build State Tracking
 
-## Current Status
-- **Current Stage**: Stage 10 (Multi-Scale Experience Backend)
+- **Current Stage**: Stage 11 (Final Integration + QA)
 - **Status**: PASS
-- **Multi-Scale APIs Ready**: Geographic hierarchy validation, tree inspection, scope availability discovery, scope-aware analytics aggregation, and explicit safe no-data responses across Local, Neighbourhood, District/Ward, City, Region/State, Country, and Global tiers.
-- **Next Stage**: Stage 11
+- **Integration Status**: Frontend build (`vite build` in 771ms), linter (`oxlint` 0 errors), backend server (`uvicorn` on port 8000), database migrations, and deterministic demo seeding verified cleanly.
+- **Critical Flow Status**: Complete core demo flow (**Map → Select locality → View service gap → Get recommendation → Run simulation → See impact**) and role permissions (Citizen, Community, Authority, Admin) verified end-to-end (**157/157 tests passing** across entire project).
+- **Next Stage**: Stage 12
 
 ---
 
@@ -691,7 +691,97 @@
   - Multi-scale demographic cross-boundary interpolation and spatial clipping for regional watersheds can be extended in future GIS expansions.
 
 - **Next Stage**:
-  - Stage 11
+  - Real Data Mode (Completed)
+
+---
+
+### Real Data Mode + OpenStreetMap Integration
+- **Result**: PASS
+- **Status**: Real Data Mode Fully Implemented & DEMO Mode Completely Preserved
+
+- **Key Capabilities & Architecture**:
+  1. **Operational Mode Management (`GET & POST /mode`)**:
+     - Seamless runtime switching between `DEMO MODE` (deterministic synthetic dataset) and `REAL DATA MODE` (live OpenStreetMap ingestion with verified provenance).
+     - Response exposes current mode, description, active data sources (`["osm", "official_census", "documented_public"]` vs `["simulated_demo", "synthetic_baseline"]`), and OSRM status.
+     - Fully backward-compatible; DEMO MODE remains the default and functions 100% offline without network or API keys.
+  2. **OpenStreetMap Data Retrieval via Overpass API (`POST /osm/import`, `GET /osm/query`)**:
+     - Dynamic Overpass QL query construction targeting:
+       * **Healthcare**: `amenity=hospital`, `amenity=clinic`, `amenity=doctors`, `amenity=pharmacy`, `healthcare=hospital/clinic/centre`
+       * **Education**: `amenity=school`, `amenity=college`, `amenity=kindergarten`, `amenity=university`
+       * **Transport**: `highway=bus_stop`, `public_transport=stop_position/platform`, `railway=station/halt`, `amenity=bus_station`
+       * **Water**: `amenity=drinking_water`, `amenity=water_point`, `man_made=water_tap/water_well`, `emergency=drinking_water`
+       * **Market**: `amenity=marketplace`, `shop=supermarket`, `shop=convenience`, `shop=greengrocer`, `shop=general`
+     - Supports bounding boxes `[south, west, north, east]`, locality center coordinates + search radius, or geographic area ID.
+  3. **Strict Coordinate Validation & Deduplication**:
+     - Validates finite floats, latitude `[-90, 90]`, longitude `[-180, 180]`, and strictly rejects (0, 0) "Null Island".
+     - Spatial deduplication eliminates overlapping facilities within 15 meters in the same category across both the ingestion batch and existing database records.
+  4. **Data Provenance & Audit Trail (`GET /osm/provenance/{service_id}`, `GET /services/{service_id}/provenance`)**:
+     - Every imported service is stored with `source_type="osm"`, `confidence_score=0.85`, and retrieval timestamp in `created_at`.
+     - Full provenance JSON record saved in `AuditLog` table: OSM element ID, OSM element type, raw tags, attribution ("© OpenStreetMap contributors"), license ("ODbL 1.0"), query endpoint, retrieval ISO timestamp.
+     - Batch-level ingestion audit log records total raw elements, imported count, deduplicated count, invalid coordinates count, and category breakdown.
+  5. **Population Integrity Guarantee**:
+     - Strictly enforces no fabrication of synthetic population numbers.
+     - Documented population from census or public datasets is recorded when supplied (`population_status="documented"`).
+     - If population data is missing, it is marked as `population_status="unavailable"` and `population_count=None`.
+  6. **OSRM Routing Integration with Graceful Fallback**:
+     - `OSRMRoutingProvider` activates only when `USE_OSRM=True` and `OSRM_BASE_URL` is configured.
+     - Clearly labels all travel times with `"is_estimate": True` and provider provenance (`"osrm"`).
+     - Automatically falls back to deterministic routing approximation on network timeouts or provider failures (`provider: "fallback_deterministic"` with explanatory warning).
+  7. **Responsible API Caching & Rate Limiting (`GET /osm/cache/stats`, `POST /osm/cache/clear`)**:
+     - In-memory SHA256 query cache with configurable TTL (`OSM_CACHE_TTL_HOURS = 24`).
+     - Respectful rate-limiting cooldown (minimum 1.0 second between consecutive live queries).
+     - Custom User-Agent header conforming to OSM usage policy.
+  8. **Service API Mode Filtering**:
+     - `GET /services` and `GET /services/geojson` accept `?mode=demo` or `?mode=real` to view synthetic vs real-world facilities on the dashboard.
+
+- **Checks Run**:
+  1. Operational mode toggle and metadata: **PASS**
+  2. Overpass query generation for all 5 categories: **PASS**
+  3. Coordinate validation and bounds rejection: **PASS**
+  4. Spatial deduplication (15m threshold): **PASS**
+  5. OSM ingestion with mock Overpass payload: **PASS**
+  6. Provenance recording and AuditLog verification: **PASS**
+  7. Population integrity (never synthesizing missing data): **PASS**
+  8. OSRM routing and graceful deterministic fallback: **PASS**
+  9. Overpass query cache telemetry and cache clear: **PASS**
+  10. Mode query filtering on services and GeoJSON: **PASS**
+  - New test suite: `backend/tests/test_real_data_mode.py` (18/18 tests passing)
+  - Regression test suite: **144/144 tests passing** across entire project
+
+- **Next Stage**:
+  - Stage 11 (Completed)
+
+---
+
+### Stage 11: Final Integration + QA
+- **Result**: PASS
+- **Status**: Complete End-to-End Integration, QA, and Production Readiness Verified
+
+- **Summary of Verification Results**:
+  1. **Clean Application Startup**:
+     - Database connects and runs with clean schema via Alembic.
+     - Deterministic demo seed (`seed.py`) populates 12 entity types idempotently.
+     - FastAPI backend runs with valid health probe (`GET /health` -> 200 OK, database: connected).
+     - React frontend builds with 0 errors (`vite build` in 771ms) and passes linting (`oxlint` with 0 warnings/errors).
+     - Frontend dev server starts and serves HTTP 200 on port 5173.
+  2. **Critical User Flow Verified**:
+     - **Map & Infrastructure**: Locality boundaries (`GET /areas/geojson`) and service pins (`GET /services/geojson`) load as valid GeoJSON FeatureCollections.
+     - **Select Locality & View Service Gap**: Selected locality (Highlands Valley) returns full multi-sector scorecard (`GET /analytics/areas/{area_id}`) and healthcare gap analysis.
+     - **Underserved Rankings**: Leaderboard ranking loads accurately (`GET /analytics/rankings/underserved`).
+     - **Recommendations**: Candidate recommendations generated with explainable scoring factor weights (`POST /recommendations`).
+     - **Simulation & Measured Impact**: What-if intervention simulation evaluated in-memory (`POST /simulations`), showing verified before/after gains (+accessibility, +coverage, +underserved relief) with zero database corruption.
+     - **Community Report Lifecycle**: Complete workflow verified from submission (`PENDING_REVIEW`) to community verification (`COMMUNITY_VERIFIED`) to authority approval (`OFFICIAL`) with immutable audit trails.
+  3. **Role-Based Access Control**:
+     - All 4 roles (Citizen, Community, Authority, Admin) verified with JWT login.
+     - Authority-only planner endpoints (`/planner/*`) strictly enforce 403 Forbidden for citizen tokens.
+     - Invalid credentials (401) and inactive accounts (403) rejected as expected.
+  4. **Test Suite Execution**:
+     - Stage 11 E2E suite (`test_stage11_e2e.py`): **13/13 PASS**.
+     - Full backend test suite: **157/157 PASS** across all stages.
+     - Zero remaining blockers.
+
+- **Next Stage**:
+  - Stage 12
 
 
 

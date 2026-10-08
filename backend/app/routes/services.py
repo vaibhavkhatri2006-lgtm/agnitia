@@ -15,7 +15,9 @@ from app.schemas.geojson import (
     GeoJSONFeature,
     GeoJSONFeatureCollection,
 )
+from app.schemas.real_data import ServiceProvenanceResponse
 from app.analytics.geojson import point_to_geojson_dict
+from app.services.osm_service import get_service_provenance
 
 router = APIRouter(prefix="/services", tags=["Services & Infrastructure"])
 
@@ -70,6 +72,10 @@ def get_services_geojson(
         alias="status",
         description="Filter by operational status (operational, degraded, temporarily_unavailable, closed)",
     ),
+    mode: Optional[str] = Query(
+        None,
+        description="Filter by operational data mode ('demo' for synthetic, 'real' for OSM/official)",
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -86,6 +92,13 @@ def get_services_geojson(
 
     if status_filter:
         query = query.filter(Service.status == status_filter.lower())
+
+    if mode:
+        normalized_mode = mode.lower().strip()
+        if normalized_mode == "demo":
+            query = query.filter(Service.source_type == "simulated_demo")
+        elif normalized_mode == "real":
+            query = query.filter(Service.source_type != "simulated_demo")
 
     services = query.order_by(Service.id).all()
     features = []
@@ -147,6 +160,10 @@ def get_services(
         alias="status",
         description="Filter by operational status (operational, degraded, temporarily_unavailable, closed)",
     ),
+    mode: Optional[str] = Query(
+        None,
+        description="Filter by operational data mode ('demo' for synthetic, 'real' for OSM/official)",
+    ),
     db: Session = Depends(get_db),
 ):
     """
@@ -163,6 +180,13 @@ def get_services(
 
     if status_filter:
         query = query.filter(Service.status == status_filter.lower())
+
+    if mode:
+        normalized_mode = mode.lower().strip()
+        if normalized_mode == "demo":
+            query = query.filter(Service.source_type == "simulated_demo")
+        elif normalized_mode == "real":
+            query = query.filter(Service.source_type != "simulated_demo")
 
     services = query.order_by(Service.id).all()
     results = []
@@ -234,3 +258,26 @@ def get_service_by_id(
         current_load=load_val,
         operating_hours=s.operating_hours,
     )
+
+
+@router.get(
+    "/{service_id}/provenance",
+    response_model=ServiceProvenanceResponse,
+    summary="Get provenance and attribution details for a specific facility",
+)
+def get_service_provenance_by_id(
+    service_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieves full data provenance, retrieval timestamp, OpenStreetMap metadata (if imported),
+    and licensing terms for a specific civic facility.
+    """
+    try:
+        data = get_service_provenance(db, service_id)
+        return ServiceProvenanceResponse(**data)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err),
+        )

@@ -22,6 +22,20 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Operational Mode: 'demo' or 'real'
+    CIVICPULSE_MODE: str = "demo"
+
+    # OpenStreetMap / Overpass API Configuration
+    OVERPASS_URL: str = "https://overpass-api.de/api/interpreter"
+    OVERPASS_TIMEOUT_SECONDS: int = 25
+    OSM_USER_AGENT: str = "CivicPulse/1.0 (https://github.com/CivicPulse; contact@civicpulse.org)"
+    OSM_CACHE_TTL_HOURS: int = 24
+
+    # OSRM (Open Source Routing Machine) Configuration
+    USE_OSRM: bool = False
+    OSRM_BASE_URL: Optional[str] = None
+    OSRM_TIMEOUT_SECONDS: float = 3.0
+
     model_config = SettingsConfigDict(
         env_file=(str(BACKEND_DIR / ".env"), str(ROOT_DIR / ".env"), ".env"),
         env_file_encoding="utf-8",

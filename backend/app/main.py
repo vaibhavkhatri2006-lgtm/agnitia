@@ -15,6 +15,8 @@ from app.routes.services import router as services_router
 from app.routes.areas import router as areas_router
 from app.routes.reports import router as reports_router
 from app.routes.planner import router as planner_router
+from app.routes.mode import router as mode_router
+from app.routes.osm import router as osm_router
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -34,6 +36,8 @@ app = FastAPI(
         {"name": "Intervention Simulation", "description": "Deterministic what-if simulation comparing before/after intervention states"},
         {"name": "Community Reports & Trust", "description": "Community-submitted service reports, verification workflows, and civic trust tracking"},
         {"name": "Planner Command Center", "description": "Urban planning intelligence, priority leaderboards, cross-service comparisons, and recommendations"},
+        {"name": "System Mode", "description": "Operational mode management: DEMO MODE vs REAL DATA MODE"},
+        {"name": "OpenStreetMap Ingestion", "description": "Overpass API data ingestion, coordinate validation, deduplication, and provenance"},
     ],
 )
 
@@ -56,6 +60,8 @@ app.include_router(recommendations_router)
 app.include_router(simulations_router)
 app.include_router(reports_router)
 app.include_router(planner_router)
+app.include_router(mode_router)
+app.include_router(osm_router)
 
 
 # --- Global Exception Handlers for Consistent Error Responses ---
