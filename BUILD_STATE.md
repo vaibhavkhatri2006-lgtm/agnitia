@@ -25,4 +25,9 @@
 - [x] Build UI for impact & simulation (before/after)
 - [x] Build UI for investment priority, resilience, future-risk
 
-... (Stages 5-12 pending)
+## Stage 5: Core App Shell
+- [x] Primary routing & layout
+- [x] Loading / Error states
+- [x] Responsive navigation
+
+... (Stages 6-12 pending)
