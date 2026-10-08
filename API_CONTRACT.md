@@ -1,7 +1,7 @@
 # CivicPulse API Contract
 
-## Version: 0.4.3
-## Stage: Stage 4C (What-If / Intervention Simulation)
+## Version: 0.4.4
+## Stage: Stage 4D (Investment + Resilience + Future Risk — Stage 4 Complete)
 
 This document establishes the official API contract between the CivicPulse backend and frontend / consumers.
 
@@ -566,4 +566,161 @@ Simulates the impact of adding a proposed civic service at a specific candidate 
   - `scope` (optional string, default: `"city"`): `"city"`, `"neighbourhoods"`, or area ID
   - `proposed_capacity` (optional int, default: `5000`)
 - **Response `200 OK`**: Same schema as `POST /simulations`.
+
+---
+
+#### 7. Investment, Resilience & Future-Risk Engine (Stage 4D)
+
+##### `POST /decision/investment-priorities`
+- **Description:** Ranks candidate intervention opportunities by strategic civic investment priority score.
+- **Request Body:**
+```json
+{
+  "service_type": "healthcare",
+  "min_gap_threshold": 20.0,
+  "max_results": 10
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "total_interventions_evaluated": 6,
+  "ranked_investments": [
+    {
+      "rank": 1,
+      "candidate_id": "cand-healthcare-9-centroid",
+      "service_type": "healthcare",
+      "area_id": 9,
+      "area_name": "Highlands Valley",
+      "latitude": 12.978,
+      "longitude": 77.625,
+      "investment_priority_score": 76.4,
+      "priority_tier": "High Priority",
+      "recommendation_score": 80.6,
+      "expected_impact_score": 81.8,
+      "population_affected": 22000,
+      "gap_severity": 86.9,
+      "equity_need": 40.0,
+      "estimated_cost_tier": "Standard Civic Facility (Tier 1)",
+      "rationale": "Strategic investment in Highlands Valley: addresses severe healthcare deficit (86.9% gap), serves 22,000 residents with expected accessibility gain of +65.7 points and strong recommendation alignment (80.6/100).",
+      "primary_drivers": [
+        "critical_service_gap",
+        "high_accessibility_impact",
+        "large_beneficiary_population"
+      ]
+    }
+  ]
+}
+```
+
+##### `GET /decision/investment-priorities`
+- **Description:** GET endpoint for ranked investment priorities.
+- **Query Parameters:** `service_type` (optional), `min_gap_threshold` (optional, default: 20.0), `max_results` (optional, default: 10).
+
+##### `POST /decision/failure-simulation`
+- **Description:** Simulates facility outage/failure in-memory to measure systemic resilience, affected population, accessibility drop, and identify single points of failure.
+- **Request Body:**
+```json
+{
+  "service_id": 3,
+  "scope": "city"
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "service_id": 3,
+  "service_name": "Riverside Health Center",
+  "category_code": "healthcare",
+  "category_name": "Healthcare",
+  "location_area_name": "Riverside Commons",
+  "scope": "city",
+  "baseline_accessibility": 65.4,
+  "failure_accessibility": 52.8,
+  "accessibility_drop": 12.6,
+  "baseline_coverage": 76.1,
+  "failure_coverage": 56.5,
+  "coverage_loss": 19.6,
+  "directly_affected_population": 18000,
+  "newly_underserved_population": 18000,
+  "resilience_score": 51.7,
+  "criticality_tier": "Critical Infrastructure / Single Point of Failure",
+  "single_point_of_failure": true,
+  "explanation": "Simulated failure of 'Riverside Health Center' (Healthcare) in Riverside Commons reduces average accessibility by 12.6 points; causes 19.6 percentage points loss in service coverage; throws 18,000 residents into newly underserved status; directly disconnects 18,000 residents who rely on this facility. Systemic resilience rating: 51.7/100 (Critical Infrastructure / Single Point of Failure).",
+  "affected_areas": [
+    {
+      "area_id": 8,
+      "area_name": "Riverside Commons",
+      "population": 18000,
+      "before_accessibility": 82.7,
+      "after_accessibility": 18.2,
+      "accessibility_drop": 64.5,
+      "before_classification": "Well Served",
+      "after_classification": "Critical Desert",
+      "was_nearest_service": true,
+      "became_underserved": true
+    }
+  ]
+}
+```
+
+##### `GET /decision/failure-simulation`
+- **Description:** GET endpoint for facility failure simulation.
+- **Query Parameters:** `service_id` (required int), `scope` (optional string, default: "city").
+
+##### `POST /decision/future-risk`
+- **Description:** Calculates deterministic forward-looking civic risk projections under configurable population demand growth. Explicitly labeled as a demo estimate.
+- **Request Body:**
+```json
+{
+  "growth_rate_pct": 15.0,
+  "time_horizon_years": 5,
+  "service_type": "healthcare",
+  "area_id": null
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "service_type": "healthcare",
+  "growth_rate_pct": 15.0,
+  "time_horizon_years": 5,
+  "evaluated_areas_count": 5,
+  "current_risk_score": 57.4,
+  "projected_risk_score": 61.2,
+  "risk_increase": 3.8,
+  "current_risk_category": "High Risk",
+  "projected_risk_category": "High Risk",
+  "risk_trend": "Growing Pressure",
+  "areas_at_risk": [
+    {
+      "area_id": 9,
+      "area_name": "Highlands Valley",
+      "current_population": 22000,
+      "projected_population": 25300,
+      "current_risk_score": 92.1,
+      "projected_risk_score": 92.8,
+      "risk_increase": 0.7,
+      "current_risk_category": "Critical Risk",
+      "projected_risk_category": "Critical Risk",
+      "capacity_status": "Critical",
+      "primary_vulnerability": "No existing Healthcare facility in catchment"
+    }
+  ],
+  "vulnerability_factors": [
+    "15.0% population demand expansion over 5-year planning horizon",
+    "Depletion of municipal capacity headroom in high-density corridors",
+    "Compounding risk in unserviced peripheral neighbourhoods"
+  ],
+  "is_demo_estimate": true,
+  "label": "Demo Estimate - Deterministic Future Risk Foundation",
+  "disclaimer": "Demo estimate for strategic planning only. Projections model uniform 15.0% population demand increase over 5 years without compensatory facility additions."
+}
+```
+
+##### `GET /decision/future-risk`
+- **Description:** GET endpoint for future risk estimation.
+- **Query Parameters:** `growth_rate_pct` (optional float, default: 15.0), `time_horizon_years` (optional int, default: 5), `service_type` (optional string), `area_id` (optional int).
+
 

@@ -8,13 +8,28 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.decision.candidates import default_candidate_service
+from app.decision.investment import default_investment_service
+from app.decision.resilience import default_resilience_service
+from app.decision.future_risk import default_future_risk_service
 from app.schemas.decision import (
     CandidateGenerationRequest,
     CandidateGenerationResponse,
     CandidateLocationResponse,
 )
+from app.schemas.investment import (
+    InvestmentPriorityRequest,
+    InvestmentPriorityResponse,
+)
+from app.schemas.resilience import (
+    FailureSimulationRequest,
+    FailureSimulationResponse,
+)
+from app.schemas.future_risk import (
+    FutureRiskRequest,
+    FutureRiskResponse,
+)
 
-router = APIRouter(prefix="/decision", tags=["Decision & Candidate Engine"])
+router = APIRouter(prefix="/decision", tags=["Decision Engine"])
 
 
 @router.get(
@@ -115,3 +130,216 @@ def generate_candidate_locations(
         rejected_candidates_count=rejected_count,
         candidates=[CandidateLocationResponse(**c.to_dict()) for c in candidates],
     )
+
+
+# --- 1. Investment Priority Endpoints (Stage 4D Task 1) ---
+
+@router.post(
+    "/investment-priorities",
+    response_model=InvestmentPriorityResponse,
+    summary="Compute ranked investment priorities for civic interventions (POST)",
+)
+def compute_investment_priorities_post(
+    payload: InvestmentPriorityRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Ranks intervention opportunities by strategic civic investment priority
+    balancing urgency, population scale, equity, and expected accessibility impact.
+    """
+    try:
+        result = default_investment_service.rank_investment_priorities(
+            db=db,
+            service_type=payload.service_type,
+            min_gap_threshold=payload.min_gap_threshold,
+            max_results=payload.max_results,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+@router.get(
+    "/investment-priorities",
+    response_model=InvestmentPriorityResponse,
+    summary="Compute ranked investment priorities for civic interventions (GET)",
+)
+def compute_investment_priorities_get(
+    service_type: Optional[str] = Query(
+        None,
+        description="Optional filter by service type (healthcare, education, transport, water, market)",
+    ),
+    min_gap_threshold: float = Query(
+        20.0,
+        ge=0.0,
+        le=100.0,
+        description="Minimum gap score threshold",
+    ),
+    max_results: int = Query(
+        10,
+        ge=1,
+        le=50,
+        description="Maximum ranked results to return",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    GET variant for retrieving ranked investment priorities.
+    """
+    try:
+        result = default_investment_service.rank_investment_priorities(
+            db=db,
+            service_type=service_type,
+            min_gap_threshold=min_gap_threshold,
+            max_results=max_results,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+# --- 2. Failure / Resilience Simulation Endpoints (Stage 4D Task 2) ---
+
+@router.post(
+    "/failure-simulation",
+    response_model=FailureSimulationResponse,
+    summary="Simulate facility outage and measure systemic resilience (POST)",
+)
+def simulate_facility_failure_post(
+    payload: FailureSimulationRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Simulates a facility outage/failure in-memory to calculate affected population,
+    accessibility drop, coverage collapse, and identify single points of failure.
+    """
+    try:
+        result = default_resilience_service.simulate_service_failure(
+            db=db,
+            service_id=payload.service_id,
+            scope=payload.scope,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+@router.get(
+    "/failure-simulation",
+    response_model=FailureSimulationResponse,
+    summary="Simulate facility outage and measure systemic resilience (GET)",
+)
+def simulate_facility_failure_get(
+    service_id: int = Query(
+        ...,
+        description="ID of the civic facility to simulate outage for",
+    ),
+    scope: Optional[str] = Query(
+        "city",
+        description="Analysis scope: 'city', 'neighbourhoods', or area ID",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    GET variant for simulating facility failure and measuring systemic resilience.
+    """
+    try:
+        result = default_resilience_service.simulate_service_failure(
+            db=db,
+            service_id=service_id,
+            scope=scope,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+# --- 3. Future-Risk Foundation Endpoints (Stage 4D Task 3) ---
+
+@router.post(
+    "/future-risk",
+    response_model=FutureRiskResponse,
+    summary="Estimate future civic risk under demand growth projections (POST)",
+)
+def estimate_future_risk_post(
+    payload: FutureRiskRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Calculates deterministic forward-looking civic risk projections
+    under configurable population demand growth.
+    """
+    try:
+        result = default_future_risk_service.estimate_future_risk(
+            db=db,
+            growth_rate_pct=payload.growth_rate_pct,
+            time_horizon_years=payload.time_horizon_years,
+            service_type=payload.service_type,
+            area_id=payload.area_id,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+
+
+@router.get(
+    "/future-risk",
+    response_model=FutureRiskResponse,
+    summary="Estimate future civic risk under demand growth projections (GET)",
+)
+def estimate_future_risk_get(
+    growth_rate_pct: float = Query(
+        15.0,
+        ge=0.0,
+        le=100.0,
+        description="Projected demand growth percentage",
+    ),
+    time_horizon_years: int = Query(
+        5,
+        ge=1,
+        le=30,
+        description="Projection horizon in years",
+    ),
+    service_type: Optional[str] = Query(
+        None,
+        description="Optional filter by service category",
+    ),
+    area_id: Optional[int] = Query(
+        None,
+        description="Optional filter by area ID",
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    GET variant for estimating future civic risk under demand growth projections.
+    """
+    try:
+        result = default_future_risk_service.estimate_future_risk(
+            db=db,
+            growth_rate_pct=growth_rate_pct,
+            time_horizon_years=time_horizon_years,
+            service_type=service_type,
+            area_id=area_id,
+        )
+        return result
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        )
+

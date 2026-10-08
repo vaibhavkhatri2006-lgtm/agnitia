@@ -265,15 +265,22 @@ class InterventionSimulationService:
         areas: List[GeographicArea],
         category: ServiceCategory,
         additional_services: Optional[List[Service]] = None,
+        excluded_service_ids: Optional[List[int]] = None,
     ) -> Tuple[Dict[str, Any], Dict[int, Dict[str, Any]]]:
         """
         Computes aggregate metrics across the scope and returns per-area details.
+        Supports optional in-memory additional_services and failure excluded_service_ids.
         """
         # Gather all active services for global travel time approximation
         db_services = db.query(Service).filter_by(category_id=category.id).all()
+        if excluded_service_ids:
+            db_services = [s for s in db_services if s.id not in excluded_service_ids]
         combined_services = list(db_services)
         if additional_services:
-            matching = [s for s in additional_services if s.category_id == category.id]
+            matching = [
+                s for s in additional_services
+                if s.category_id == category.id and (not excluded_service_ids or s.id not in excluded_service_ids)
+            ]
             combined_services += matching
 
         total_population = sum(a.population for a in areas)
@@ -288,7 +295,11 @@ class InterventionSimulationService:
 
         for area in areas:
             metrics = self.analytics.analyze_area_category(
-                db, area, category, additional_services=additional_services
+                db,
+                area,
+                category,
+                additional_services=additional_services,
+                excluded_service_ids=excluded_service_ids,
             )
             area_id = area.id
             pop = area.population

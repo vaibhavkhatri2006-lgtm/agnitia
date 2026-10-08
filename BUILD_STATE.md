@@ -1,9 +1,9 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 4C (What-If / Intervention Simulation)
+- **Current Stage**: Stage 4 (Decision Engine — 4A, 4B, 4C, 4D Complete)
 - **Status**: PASS
-- **Next Stage**: Stage 4D
+- **Next Stage**: Stage 5
 
 ---
 
@@ -305,8 +305,79 @@
   - Backend startup & OpenAPI: PASS (16 paths)
 
 - **Known Limitations**:
-  - Multi-facility combinatorial portfolio optimization, budget constraint scheduling, and facility failure simulations belong to Stage 4D / Stage 5.
+  - Multi-facility combinatorial portfolio optimization and dynamic disaster cascades belong to Stage 5.
 
 - **Next Stage**:
   - Stage 4D
+
+---
+
+### Stage 4D: Investment + Resilience + Future Risk (Stage 4 Complete)
+- **Result**: PASS
+
+- **Features Implemented**:
+  1. **Task 1 — Investment Priority (`app.decision.investment`)**:
+     - Deterministic composite score: `35% Recommendation Score + 25% Expected Impact Score + 15% Gap Severity + 15% Population Factor + 10% Equity Need`.
+     - Output: Ranked interventions with strategic priority tiers (`Highest Priority`, `High Priority`, `Moderate Priority`, `Low Priority`), estimated standard cost tiers, and civic justifications.
+     - Stable secondary/tertiary tie-breaking (`-investment_priority_score`, `-population`, `candidate_id`).
+  2. **Task 2 — Failure / Resilience Simulation (`app.decision.resilience`)**:
+     - In-memory facility outage simulation without database mutations (`excluded_service_ids`).
+     - Systemic resilience score (0–100), coverage collapse percentage, newly underserved population count, directly affected population count.
+     - Single point of failure detection (`Critical Infrastructure / Single Point of Failure`, `High Dependency`, `Moderate Vulnerability`, `Resilient / Redundant`).
+  3. **Task 3 — Future-Risk Foundation (`app.decision.future_risk`)**:
+     - Deterministic forward-looking civic risk projections under configurable population demand growth (e.g. 15% growth, 5 years).
+     - Capacity saturation and headroom depletion evaluation.
+     - Explicit demo labeling (`is_demo_estimate: True`, planning disclaimers).
+
+- **Complete Decision Engine Architecture (Stage 4)**:
+  - `Candidate (4A)`: Multi-strategy spatial allocation (`centroid`, `population_node`, `gap_perimeter`) with geometric boundary validation.
+  - `Recommendation (4B)`: 7-factor transparent normalized scoring (0–100) with stable tie-breaking and explainable reasons.
+  - `Simulation (4C)`: In-memory Before vs After what-if intervention impact measuring accessibility gains, coverage expansion, and underserved relief.
+  - `Investment Priority (4D)`: Strategic capital allocation ranking balancing recommendation alignment, urgency, population scale, equity, and simulated impact return.
+  - `Failure Scenario (4D)`: In-memory service outage testing identifying systemic single points of failure and network resilience.
+  - `Future Risk (4D)`: Forward-looking demand growth risk foundation.
+
+- **API Endpoints**:
+  - `POST /decision/candidates/generate` & `GET /decision/candidates`
+  - `POST /recommendations` & `GET /recommendations`
+  - `POST /simulations` & `GET /simulations`
+  - `POST /decision/investment-priorities` & `GET /decision/investment-priorities`
+  - `POST /decision/failure-simulation` & `GET /decision/failure-simulation`
+  - `POST /decision/future-risk` & `GET /decision/future-risk`
+
+- **Files Changed**:
+  - `backend/app/analytics/engine.py`
+  - `backend/app/decision/investment.py`
+  - `backend/app/decision/resilience.py`
+  - `backend/app/decision/future_risk.py`
+  - `backend/app/decision/__init__.py`
+  - `backend/app/schemas/investment.py`
+  - `backend/app/schemas/resilience.py`
+  - `backend/app/schemas/future_risk.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/decision.py`
+  - `backend/tests/test_stage4d.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04D.md`
+
+- **Checks Run**:
+  - Investment ranking test: PASS
+  - Failure simulation test: PASS
+  - Future risk test: PASS
+  - Deterministic output test: PASS
+  - Invalid input test: PASS
+  - Stage 4A regression tests: PASS (14/14)
+  - Stage 4B regression tests: PASS (15/15)
+  - Stage 4C regression tests: PASS (16/16)
+  - Full test suite: PASS (82/82 passing)
+  - Database integrity check (counts unmutated): PASS
+  - Backend startup / OpenAPI: PASS (19 API paths)
+
+- **Known Limitations**:
+  - AI planning agents, LLM natural language reports, community reporting workflow logic, and real-time frontend Scenario Lab belong to Stage 5.
+
+- **Next Stage**:
+  - Stage 5
+
 

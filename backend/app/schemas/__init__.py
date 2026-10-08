@@ -32,6 +32,24 @@ from app.schemas.simulation import (
     SimulationResponse,
 )
 
+from app.schemas.investment import (
+    InvestmentPriorityRequest,
+    RankedInvestmentItem,
+    InvestmentPriorityResponse,
+)
+
+from app.schemas.resilience import (
+    FailureSimulationRequest,
+    AffectedAreaFailureItem,
+    FailureSimulationResponse,
+)
+
+from app.schemas.future_risk import (
+    FutureRiskRequest,
+    AreaFutureRiskItem,
+    FutureRiskResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -59,4 +77,13 @@ __all__ = [
     "SimulationImpactMetrics",
     "TargetAreaImpact",
     "SimulationResponse",
+    "InvestmentPriorityRequest",
+    "RankedInvestmentItem",
+    "InvestmentPriorityResponse",
+    "FailureSimulationRequest",
+    "AffectedAreaFailureItem",
+    "FailureSimulationResponse",
+    "FutureRiskRequest",
+    "AreaFutureRiskItem",
+    "FutureRiskResponse",
 ]

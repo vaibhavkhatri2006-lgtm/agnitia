@@ -160,18 +160,24 @@ class AnalyticsEngine:
         area_lat: float,
         area_lon: float,
         additional_services: Optional[List[Service]] = None,
+        excluded_service_ids: Optional[List[int]] = None,
     ) -> float:
         """
         Evaluates connectivity to public transit from the area center.
-        Supports optional in-memory additional_services for simulation.
+        Supports optional in-memory additional_services and failure excluded_service_ids.
         """
         transport_cat = db.query(ServiceCategory).filter_by(code="transport").first()
         if not transport_cat:
             return 50.0
 
         transit_services = db.query(Service).filter_by(category_id=transport_cat.id).all()
+        if excluded_service_ids:
+            transit_services = [s for s in transit_services if s.id not in excluded_service_ids]
         if additional_services:
-            matching_transit = [s for s in additional_services if s.category_id == transport_cat.id]
+            matching_transit = [
+                s for s in additional_services
+                if s.category_id == transport_cat.id and (not excluded_service_ids or s.id not in excluded_service_ids)
+            ]
             transit_services = list(transit_services) + matching_transit
 
         if not transit_services:
@@ -306,10 +312,12 @@ class AnalyticsEngine:
         area: GeographicArea,
         category: ServiceCategory,
         additional_services: Optional[List[Service]] = None,
+        excluded_service_ids: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         """
         Calculates all Stage 3 metrics for a specific geographic area and service category.
-        Supports optional in-memory additional_services for simulation without database writes.
+        Supports optional in-memory additional_services for simulation and excluded_service_ids
+        for failure scenarios without database writes.
         """
         # Area demand and centroid
         demand_population = area.population
@@ -320,8 +328,13 @@ class AnalyticsEngine:
 
         # Identify nearest/relevant service in category within catchment radius
         services = db.query(Service).filter_by(category_id=category.id).all()
+        if excluded_service_ids:
+            services = [s for s in services if s.id not in excluded_service_ids]
         if additional_services:
-            matching_services = [s for s in additional_services if s.category_id == category.id]
+            matching_services = [
+                s for s in additional_services
+                if s.category_id == category.id and (not excluded_service_ids or s.id not in excluded_service_ids)
+            ]
             services = list(services) + matching_services
 
         nearest_service: Optional[Service] = None
@@ -359,7 +372,7 @@ class AnalyticsEngine:
         cap_pres_data = self.calculate_capacity_and_pressure(nearest_service, demand_population)
         capacity_score = cap_pres_data["capacity_score"]
         transport_score = self.calculate_transport_connectivity(
-            db, area_lat, area_lon, additional_services=additional_services
+            db, area_lat, area_lon, additional_services=additional_services, excluded_service_ids=excluded_service_ids
         )
 
         # Preliminary access for equity calculation
@@ -422,11 +435,12 @@ class AnalyticsEngine:
         db: Session,
         area: GeographicArea,
         additional_services: Optional[List[Service]] = None,
+        excluded_service_ids: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         """
         Runs analytics across all active service categories for an area,
         computing category breakdowns and overall composite scores.
-        Supports optional in-memory additional_services for simulation.
+        Supports optional in-memory additional_services and failure excluded_service_ids.
         """
         categories = db.query(ServiceCategory).filter_by(is_active=True).all()
         category_results = []
@@ -434,7 +448,7 @@ class AnalyticsEngine:
 
         for cat in categories:
             res = self.analyze_area_category(
-                db, area, cat, additional_services=additional_services
+                db, area, cat, additional_services=additional_services, excluded_service_ids=excluded_service_ids
             )
             category_results.append(res)
             total_access += res["accessibility_score"]
