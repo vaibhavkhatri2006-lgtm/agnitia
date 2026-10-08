@@ -15,4 +15,9 @@
 - [x] Set up Protected Routes
 - [x] Implement AppLayout with role-aware navigation
 
-... (Stages 3-12 pending)
+## Stage 3: UI Contracts for Core Metrics
+- [x] Create MetricCard component
+- [x] Create CoreMetricsPanel for Accessibility, Gap, Equity, Confidence, Reality Gap, Service Pressure
+- [x] Ensure Frontend does not compute analytics (delegated to backend)
+
+... (Stages 4-12 pending)
