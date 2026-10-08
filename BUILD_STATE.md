@@ -1,0 +1,12 @@
+# Build State
+
+## Stage 0: Repository Structure & Scaffold
+- [x] Initialized Git Repository
+- [x] Created `frontend` directory using Vite (React + TS)
+- [x] Install dependencies (Tailwind, etc.)
+- [x] Define API_CONTRACT.md base
+
+## Stage 1: Data Models
+- [ ] Expected frontend data models
+
+... (Stages 2-12 pending)
