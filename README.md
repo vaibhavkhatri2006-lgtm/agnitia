@@ -6,8 +6,8 @@ CivicPulse is a modern civic infrastructure, urban accessibility, and community 
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Uvicorn
-- **Database**: SQLite (local development default) / PostgreSQL + PostGIS (via Docker)
+- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, GeoAlchemy2, Shapely, Uvicorn
+- **Database**: PostgreSQL + PostGIS (Production/Docker) / SQLite (Local Development)
 - **Frontend Scaffold**: Vite + React
 - **DevOps**: Docker & Docker Compose support
 
@@ -18,20 +18,36 @@ CivicPulse is a modern civic infrastructure, urban accessibility, and community 
 ```
 civicpulse/
 ├── backend/
+│   ├── alembic/            # Alembic migration scripts and environment
+│   │   ├── versions/       # Schema version migration scripts
+│   │   └── env.py          # Migration execution environment
 │   ├── app/
-│   │   ├── __init__.py
+│   │   ├── models/         # SQLAlchemy 2.0 data models
+│   │   │   ├── types.py                # SafeGeometry spatial type decorator
+│   │   │   ├── data_source.py          # Data source & trust levels
+│   │   │   ├── geographic_area.py      # Multi-scale hierarchical areas
+│   │   │   ├── service_category.py     # Data-driven categories
+│   │   │   ├── service.py              # Civic services with spatial points
+│   │   │   ├── service_capacity.py     # Capacities and current load
+│   │   │   ├── population_cell.py      # Spatial population & demographics
+│   │   │   ├── community_report.py     # Citizen issue reports
+│   │   │   ├── report_verification.py  # Verification audits
+│   │   │   └── audit_log.py            # Comprehensive mutation tracking
 │   │   ├── config.py       # Pydantic Settings & environment variables
 │   │   ├── database.py     # SQLAlchemy engine, session, & health probe
 │   │   └── main.py         # FastAPI application with /health endpoint
 │   ├── tests/
-│   │   ├── __init__.py
-│   │   └── test_health.py  # Health check & root endpoint tests
-│   ├── .env.example        # Backend environment template
-│   ├── Dockerfile          # Backend container specification
-│   ├── requirements.txt    # Python backend dependencies
+│   │   ├── test_database.py # Stage 1 integrity, geometry, & query tests
+│   │   └── test_health.py   # Health check & root endpoint tests
+│   ├── seed.py             # Deterministic demo data seeding script
+│   ├── verify_stage1.py    # End-to-end verification suite
 │   ├── run.py              # Backend startup entrypoint
-│   └── start_db.py         # Database connection verification & probe
-├── frontend/               # Vite + React frontend scaffold
+│   ├── start_db.py         # Database connection verification & probe
+│   ├── requirements.txt    # Python backend dependencies
+│   ├── Dockerfile          # Backend container specification
+│   ├── alembic.ini         # Alembic configuration
+│   └── .env.example        # Backend environment template
+├── frontend/               # Vite + React frontend scaffold (Person 1)
 ├── docs/
 │   └── checkpoints/        # Stage completion records
 ├── .env.example            # Root environment template
@@ -60,52 +76,61 @@ cp backend/.env.example backend/.env
 ```
 
 Configuration options:
-- `DATABASE_URL`: Defaults to `sqlite:///./civicpulse.db`
+- `DATABASE_URL`: Defaults to `sqlite:///./civicpulse.db` (or `postgresql+psycopg2://civicpulse:civicpulse_secret@localhost:5432/civicpulse_db`)
 - `BACKEND_HOST`: `127.0.0.1`
 - `BACKEND_PORT`: `8000`
 - `ENVIRONMENT`: `development`
 
 ---
 
-### 2. Database Startup
+### 2. Database Migrations & Deterministic Seeding
 
-#### Option A: Local SQLite (Default - Zero External Setup)
-SQLite is embedded directly in Python. Run the database startup and connection probe script:
-
+#### Run Migrations (Upgrade to Head)
 ```bash
-# Windows
-.\backend\.venv\Scripts\python backend\start_db.py
+# Windows PowerShell
+.\backend\.venv\Scripts\alembic upgrade head
 
 # Linux / macOS
-./backend/.venv/bin/python backend/start_db.py
+./backend/.venv/bin/alembic upgrade head
 ```
 
-#### Option B: Docker Compose (PostgreSQL + PostGIS)
-If Docker is installed:
-
+#### Downgrade Migrations (Rollback to Base)
 ```bash
-docker compose up -d db
+# Windows PowerShell
+.\backend\.venv\Scripts\alembic downgrade base
+
+# Linux / macOS
+./backend/.venv/bin/alembic downgrade base
+```
+
+#### Run Deterministic Seed
+Populates the database with reproducible simulated demonstration data (labeled `simulated_demo`):
+```bash
+# Windows PowerShell
+.\backend\.venv\Scripts\python backend/seed.py
+
+# Linux / macOS
+./backend/.venv/bin/python backend/seed.py
+```
+
+#### Run End-to-End Verification Check
+```bash
+# Windows PowerShell
+.\backend\.venv\Scripts\python backend/verify_stage1.py
+
+# Linux / macOS
+./backend/.venv/bin/python backend/verify_stage1.py
 ```
 
 ---
 
 ### 3. Backend Startup
 
-Set up Python virtual environment and install dependencies:
-
 ```bash
-# Create virtual environment
-python -m venv backend/.venv
-
-# Activate and install dependencies (Windows PowerShell)
-.\backend\.venv\Scripts\pip install -r backend/requirements.txt
-
-# Start backend server
+# Start backend server (Windows PowerShell)
 .\backend\.venv\Scripts\python backend/run.py
-```
 
-Or run via Uvicorn directly:
-```bash
+# Or via Uvicorn directly
 .\backend\.venv\Scripts\uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
 
@@ -116,20 +141,12 @@ Backend will be available at:
 
 ---
 
-### 4. Frontend Startup
+### 4. Running Backend Tests
 
 ```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Frontend dev server runs at [http://localhost:5173](http://localhost:5173).
-
----
-
-### 5. Running Backend Tests
-
-```bash
+# Windows PowerShell
 .\backend\.venv\Scripts\pytest backend/tests
+
+# Linux / macOS
+./backend/.venv/bin/pytest backend/tests
 ```
