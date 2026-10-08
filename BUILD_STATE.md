@@ -7,6 +7,6 @@
 - [x] Define API_CONTRACT.md base
 
 ## Stage 1: Data Models
-- [ ] Expected frontend data models
+- [x] Expected frontend data models
 
 ... (Stages 2-12 pending)
