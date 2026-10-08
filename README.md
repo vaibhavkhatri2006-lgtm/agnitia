@@ -1,147 +1,111 @@
 # CivicPulse
 
-CivicPulse is a modern civic infrastructure, urban accessibility, and community analytics platform designed to empower citizens and urban planners with data-driven insights.
+CivicPulse is a modern civic infrastructure, urban accessibility, and community analytics platform designed to empower citizens and urban planners with data-driven insights. It bridges the gap between top-down municipal planning and bottom-up citizen ground reality through deterministic spatial analytics, explainable intervention recommendations, what-if simulations, and a verified civic trust hierarchy.
+
+---
+
+## Key Features
+
+1. **Deterministic Geospatial & Analytics Engine**:
+   - Multi-dimensional accessibility scoring evaluating travel times, operational status, capacity pressure, transport connectivity, and demographic equity.
+   - Categorical service desert classification: Well Served, Adequate, At Risk, Underserved, and Critical Desert.
+   - Ground truth integration calculating **Reality Gap** from citizen ground reports.
+
+2. **Decision & Recommendation Engine**:
+   - Algorithmic candidate generation using centroid, population density, and gap-perimeter strategies.
+   - Transparent 7-factor normalized recommendation scoring with explainable drivers.
+
+3. **In-Memory What-If Intervention Simulation**:
+   - Simulates placement of facilities at candidate locations.
+   - Produces measurable impact metrics (+accessibility, +coverage expansion, +underserved relief) with zero database mutation.
+
+4. **Systemic Resilience & Outage Modeling**:
+   - Models critical infrastructure failures to detect systemic Single Points of Failure.
+
+5. **Multi-Scale Administrative Hierarchy**:
+   - Scope-aware analytics across Local, Neighbourhood, District/Ward, and City levels.
+
+6. **Community Trust & Verification Workflow**:
+   - Multi-tier lifecycle: `SUBMITTED` -> `PENDING_REVIEW` -> `COMMUNITY_VERIFIED` -> `AUTHORITY_VERIFIED` -> `OFFICIAL`.
+   - Immutable audit trail tracking all state mutations.
+
+7. **Dual Operational Modes**:
+   - **DEMO MODE**: 100% deterministic, offline, self-contained dataset for safe presentations and testing.
+   - **REAL DATA MODE**: Live OpenStreetMap Overpass API ingestion with coordinate validation, spatial deduplication (<15m), and full data provenance. Enforces strict population integrity (never inventing missing census numbers).
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, GeoAlchemy2, Shapely, PyJWT, Bcrypt, Uvicorn
-- **Database**: PostgreSQL + PostGIS (Production/Docker) / SQLite (Local Development)
-- **Frontend Scaffold**: Vite + React (Person 1)
-- **DevOps**: Docker & Docker Compose support
+- **Backend**: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2.0, Alembic, GeoAlchemy2, Shapely, PyJWT, Bcrypt, Uvicorn, HTTPX
+- **Database**: PostgreSQL + PostGIS (Production/Docker) / SQLite with Shapely (Local Development)
+- **Frontend**: Vite + React, TailwindCSS/Vanilla CSS, Leaflet GeoJSON Maps (Person 1)
+- **Testing**: Pytest (157 automated tests, 100% pass rate)
 
 ---
 
-## Project Structure
+## Documentation Links
 
-```
-civicpulse/
-├── backend/
-│   ├── alembic/            # Alembic migration scripts and environment
-│   │   ├── versions/       # Schema version migration scripts
-│   │   └── env.py          # Migration execution environment
-│   ├── app/
-│   │   ├── core/           # Security, password hashing (bcrypt), JWT logic
-│   │   │   └── security.py
-│   │   ├── dependencies/   # Reusable route guards & RBAC authorization
-│   │   │   └── auth.py
-│   │   ├── models/         # SQLAlchemy 2.0 data models
-│   │   │   ├── types.py                # SafeGeometry spatial type decorator
-│   │   │   ├── data_source.py          # Data source & trust levels
-│   │   │   ├── geographic_area.py      # Multi-scale hierarchical areas
-│   │   │   ├── service_category.py     # Data-driven categories
-│   │   │   ├── service.py              # Civic services with spatial points
-│   │   │   ├── service_capacity.py     # Capacities and current load
-│   │   │   ├── population_cell.py      # Spatial population & demographics
-│   │   │   ├── community_report.py     # Citizen issue reports
-│   │   │   ├── report_verification.py  # Verification audits
-│   │   │   ├── audit_log.py            # Comprehensive mutation tracking
-│   │   │   ├── role.py                 # RBAC Role and role_permissions
-│   │   │   ├── permission.py           # Granular permissions
-│   │   │   └── user.py                 # Users with password hashes & roles
-│   │   ├── routes/         # FastAPI API endpoints
-│   │   │   └── auth.py     # Authentication, /me, & RBAC test endpoints
-│   │   ├── schemas/        # Pydantic v2 request/response models
-│   │   │   ├── auth.py
-│   │   │   └── errors.py
-│   │   ├── services/       # Service layer business logic
-│   │   │   └── auth_service.py
-│   │   ├── config.py       # Pydantic Settings & environment variables
-│   │   ├── database.py     # SQLAlchemy engine, session, & health probe
-│   │   └── main.py         # FastAPI application with /health & routers
-│   ├── tests/
-│   │   ├── test_auth.py     # Authentication, JWT, and RBAC tests
-│   │   ├── test_database.py # Database integrity, geometry, & query tests
-│   │   └── test_health.py   # Health check & root endpoint tests
-│   ├── seed.py             # Deterministic demo data seeding script
-│   ├── verify_stage1.py    # Stage 1 verification runner
-│   ├── run.py              # Backend startup entrypoint
-│   ├── start_db.py         # Database connection verification & probe
-│   ├── requirements.txt    # Python backend dependencies
-│   ├── Dockerfile          # Backend container specification
-│   ├── alembic.ini         # Alembic configuration
-│   └── .env.example        # Backend environment template
-├── frontend/               # Vite + React frontend scaffold (Person 1)
-├── docs/
-│   └── checkpoints/        # Stage completion records
-├── .env.example            # Root environment template
-├── docker-compose.yml      # PostGIS database & containerized backend
-├── API_CONTRACT.md         # API contract documentation
-├── BUILD_STATE.md          # Multi-stage build state tracking
-└── README.md
-```
+- [SETUP.md](file:///c:/Users/varun/OneDrive/Desktop/ag/SETUP.md): Step-by-step setup and quickstart instructions.
+- [PROJECT_REPORT.md](file:///c:/Users/varun/OneDrive/Desktop/ag/PROJECT_REPORT.md): Comprehensive project architecture, engine design, and technical report.
+- [DEMO_SCRIPT.md](file:///c:/Users/varun/OneDrive/Desktop/ag/DEMO_SCRIPT.md): 3-minute hackathon demo script and flow.
+- [JUDGES_QA.md](file:///c:/Users/varun/OneDrive/Desktop/ag/JUDGES_QA.md): Technical defense and judges' Q&A guide.
+- [API_CONTRACT.md](file:///c:/Users/varun/OneDrive/Desktop/ag/API_CONTRACT.md): Stable API contract specifications.
+- [BUILD_STATE.md](file:///c:/Users/varun/OneDrive/Desktop/ag/BUILD_STATE.md): Complete multi-stage build progress.
 
 ---
 
 ## Quickstart Guide
 
 ### 1. Environment Setup
-
-Copy `.env.example` to `.env`:
-
-```bash
+```powershell
 # Windows PowerShell
 Copy-Item .env.example .env
-Copy-Item backend/.env.example backend/.env
-
-# Linux / macOS
-cp .env.example .env
-cp backend/.env.example backend/.env
+Copy-Item backend\.env.example backend\.env
 ```
-
-Configuration options:
-- `DATABASE_URL`: Defaults to `sqlite:///./civicpulse.db` (or PostgreSQL connection string)
-- `BACKEND_HOST`: `127.0.0.1`
-- `BACKEND_PORT`: `8000`
-- `JWT_SECRET_KEY`: Secret signing key (32+ bytes)
-- `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`: 60
-
----
 
 ### 2. Database Migrations & Deterministic Seeding
-
-```bash
-# Run migrations (Windows PowerShell)
+```powershell
+# Run migrations
 .\backend\.venv\Scripts\alembic upgrade head
 
-# Run deterministic demo seed (includes demo users and RBAC roles)
+# Run deterministic demo seed (12 entity types seeded)
 .\backend\.venv\Scripts\python backend/seed.py
 ```
-
----
 
 ### 3. Demo Accounts for Testing
 
 | Role | Email | Password | Intended Capabilities |
 | :--- | :--- | :--- | :--- |
-| **Citizen** | `citizen@example.com` | `Citizen123!` | Public statistics, create civic reports |
-| **Community** | `community@example.com` | `Community123!` | Citizen + peer report verification |
-| **Authority** | `authority@example.com` | `Authority123!` | Municipal planner operations, official audits |
-| **Admin** | `admin@example.com` | `Admin123!` | Full system administration |
+| **Citizen** | `citizen@example.com` | `Citizen123!` | Public map, locality scorecards, create reports |
+| **Community** | `community@example.com` | `Community123!` | Citizen access + peer report verification |
+| **Authority** | `authority@example.com` | `Authority123!` | Planner command center, official audits, simulations |
+| **Admin** | `admin@example.com` | `Admin123!` | Full system administration and moderation |
 | **Inactive** | `inactive@example.com` | `Inactive123!` | Disabled account for 403 test validation |
 
----
+### 4. Running Backend & Frontend
 
-### 4. Backend Startup
-
-```bash
-# Windows PowerShell
+**Backend**:
+```powershell
 .\backend\.venv\Scripts\python backend/run.py
 ```
+- API Root: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- Swagger Docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- Health Probe: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 
-Available endpoints:
-- **API Root**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
-- **Health Check**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
-- **Interactive Swagger Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-- **ReDoc Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
-- **OpenAPI Schema**: [http://127.0.0.1:8000/openapi.json](http://127.0.0.1:8000/openapi.json)
+**Frontend**:
+```bash
+cd frontend
+npm run dev
+```
+- Application: [http://127.0.0.1:5173](http://127.0.0.1:5173)
 
 ---
 
-### 5. Running Automated Backend Tests
+## Automated Test Verification
 
-```bash
-# Windows PowerShell
-.\backend\.venv\Scripts\pytest backend/tests
+Run all automated unit, integration, and E2E tests:
+```powershell
+.\backend\.venv\Scripts\python.exe -m pytest backend/tests/ -v
 ```
+**Test Results**: **157/157 PASS** across all stages (Stages 0–11 + Real Data Mode).
