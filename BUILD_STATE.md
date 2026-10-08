@@ -58,4 +58,9 @@
 - [x] Connect scale states (Local to Global)
 - [x] Handle 'Data unavailable' state cleanly
 
-... (Stages 11-12 pending)
+## Stage 11: QA & Testing
+- [x] Run TypeScript compiler
+- [x] Run build verification
+- [x] Test complete frontend user journeys
+
+... (Stage 12 pending)
