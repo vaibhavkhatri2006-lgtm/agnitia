@@ -961,4 +961,173 @@ Simulates the impact of adding a proposed civic service at a specific candidate 
 - **Description:** GET endpoint for future risk estimation.
 - **Query Parameters:** `growth_rate_pct` (optional float, default: 15.0), `time_horizon_years` (optional int, default: 5), `service_type` (optional string), `area_id` (optional int).
 
+---
+
+#### 10. Community Reports & Civic Trust (Stage 7)
+
+Backend workflows for community-submitted civic service reports, server-side RBAC verification, and transparent civic trust tracking.
+
+##### `POST /reports`
+- **Description:** Submits a community report for a civic service issue or observation.
+- **Authentication:** Required (Bearer token: `citizen`, `community`, `authority`, `admin`).
+- **Initial Status:** Sets `status` to `PENDING_REVIEW` and `verification_status` to `PENDING_REVIEW`. Logs initial transition (`SUBMITTED` -> `PENDING_REVIEW`) into immutable audit log.
+- **Request Body:**
+```json
+{
+  "title": "Severe water leakage near Central Market",
+  "description": "Main pipeline broken, large pool of clean water overflowing onto roadway.",
+  "category_code": "water",
+  "service_id": null,
+  "area_id": null,
+  "latitude": 12.9750,
+  "longitude": 77.5950,
+  "severity": "high",
+  "evidence_metadata": {
+    "has_photo": true,
+    "sensor_telemetry": { "flow_anomaly": true }
+  }
+}
+```
+- **Response `201 Created`**:
+```json
+{
+  "id": 1,
+  "reporter_id": "1",
+  "category_id": 4,
+  "category_code": "water",
+  "service_id": null,
+  "service_name": null,
+  "area_id": 1,
+  "area_name": "Central Ward",
+  "title": "Severe water leakage near Central Market",
+  "description": "Main pipeline broken, large pool of clean water overflowing onto roadway.",
+  "latitude": 12.9750,
+  "longitude": 77.5950,
+  "severity": "high",
+  "status": "PENDING_REVIEW",
+  "verification_status": "PENDING_REVIEW",
+  "confidence_score": 0.55,
+  "source_type": "community",
+  "created_at": "2026-10-09T02:30:00Z",
+  "updated_at": "2026-10-09T02:30:00Z",
+  "evidence_metadata": {
+    "has_photo": true,
+    "sensor_telemetry": { "flow_anomaly": true }
+  }
+}
+```
+
+##### `GET /reports`
+- **Description:** Lists cataloged community reports with optional filtering.
+- **Query Parameters:**
+  - `status` (optional string): e.g. `PENDING_REVIEW`, `COMMUNITY_VERIFIED`, `OFFICIAL`, `REJECTED`
+  - `verification_status` (optional string)
+  - `category_code` (optional string): e.g. `water`, `healthcare`, `transport`
+  - `area_id` (optional int)
+  - `service_id` (optional int)
+  - `limit` (optional int, default: `50`, max: `200`)
+  - `offset` (optional int, default: `0`)
+- **Response `200 OK`**: `List[ReportResponse]`
+
+##### `GET /reports/{report_id}`
+- **Description:** Retrieves detailed community report including full verification history and immutable audit trail.
+- **Response `200 OK`**:
+```json
+{
+  "id": 1,
+  "reporter_id": "1",
+  "category_id": 4,
+  "category_code": "water",
+  "service_id": null,
+  "service_name": null,
+  "area_id": 1,
+  "area_name": "Central Ward",
+  "title": "Severe water leakage near Central Market",
+  "description": "Main pipeline broken, large pool of clean water overflowing onto roadway.",
+  "latitude": 12.9750,
+  "longitude": 77.5950,
+  "severity": "high",
+  "status": "OFFICIAL",
+  "verification_status": "OFFICIAL",
+  "confidence_score": 1.0,
+  "source_type": "community",
+  "created_at": "2026-10-09T02:30:00Z",
+  "updated_at": "2026-10-09T02:35:00Z",
+  "evidence_metadata": null,
+  "verifications": [
+    {
+      "id": 1,
+      "verifier_id": "2",
+      "verification_status": "COMMUNITY_VERIFIED",
+      "verification_type": "peer_confirmation",
+      "notes": "Verified by community patrol group.",
+      "created_at": "2026-10-09T02:32:00Z"
+    },
+    {
+      "id": 2,
+      "verifier_id": "3",
+      "verification_status": "OFFICIAL",
+      "verification_type": "official_audit",
+      "notes": "Official municipal work order issued #WO-8821.",
+      "created_at": "2026-10-09T02:35:00Z"
+    }
+  ],
+  "audit_trail": [
+    {
+      "id": 1,
+      "actor_id": "1",
+      "action": "create",
+      "entity_type": "community_report",
+      "entity_id": 1,
+      "previous_value": "SUBMITTED",
+      "new_value": "PENDING_REVIEW",
+      "reason": "Initial community report submitted: Severe water leakage near Central Market",
+      "created_at": "2026-10-09T02:30:00Z"
+    },
+    {
+      "id": 2,
+      "actor_id": "2",
+      "action": "status_change",
+      "entity_type": "community_report",
+      "entity_id": 1,
+      "previous_value": "PENDING_REVIEW",
+      "new_value": "COMMUNITY_VERIFIED",
+      "reason": "Verified by community patrol group.",
+      "created_at": "2026-10-09T02:32:00Z"
+    },
+    {
+      "id": 3,
+      "actor_id": "3",
+      "action": "status_change",
+      "entity_type": "community_report",
+      "entity_id": 1,
+      "previous_value": "COMMUNITY_VERIFIED",
+      "new_value": "OFFICIAL",
+      "reason": "Official municipal work order issued #WO-8821.",
+      "created_at": "2026-10-09T02:35:00Z"
+    }
+  ]
+}
+```
+
+##### `POST /reports/{report_id}/verify`
+- **Description:** Verifies, updates status, or rejects a community report.
+- **Server-Side RBAC Enforcement:**
+  - `COMMUNITY_VERIFIED`: Allowed for `community`, `authority`, `admin` roles.
+  - `AUTHORITY_VERIFIED`: Allowed for `authority`, `admin` roles (returns `403` for `citizen` / `community`).
+  - `OFFICIAL`: Allowed for `authority`, `admin` roles (returns `403` for `citizen` / `community`).
+  - `REJECTED`: Allowed for `authority`, `admin` roles (returns `403` for `citizen` / `community`).
+- **Request Body:**
+```json
+{
+  "verification_status": "OFFICIAL",
+  "notes": "Verified on-site and integrated into official city repair schedule."
+}
+```
+- **Response `200 OK`**: `ReportDetailResponse`
+
+##### `GET /reports/{report_id}/audit-trail`
+- **Description:** Returns the immutable audit trail for a report.
+- **Response `200 OK`**: `List[AuditLogItem]`
+
 

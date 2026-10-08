@@ -1,10 +1,10 @@
 # CivicPulse Build State Tracking
 
 ## Current Status
-- **Current Stage**: Stage 6 (Map + Core Dashboard Backend)
+- **Current Stage**: Stage 7 (Community + Civic Trust)
 - **Status**: PASS
-- **Map / Dashboard Backend**: Ready for Person 1 Frontend Map & Dashboard
-- **Next Stage**: Stage 7
+- **Civic Trust Workflow**: Community reports, multi-tier RBAC verification, transparent confidence scoring, and immutable audit trails verified.
+- **Next Stage**: Stage 8
 
 ---
 
@@ -518,5 +518,49 @@
 
 - **Next Stage**:
   - Stage 7
+
+---
+
+### Stage 7: Community + Civic Trust
+- **Result**: PASS
+- **Status**: Backend Community Reporting, Civic Trust, and Verification Workflow Fully Operational
+
+- **Trust Workflow Summary**:
+  - **Report Creation (`POST /reports`)**:
+    - Citizens, community members, and authorities can report infrastructure issues.
+    - Captures title, description, category/service, coordinates, severity, and optional evidence metadata.
+    - Sets initial lifecycle state: `SUBMITTED` -> `PENDING_REVIEW` with initial audit log entry.
+    - Initial baseline confidence calculated dynamically (0.50 base, 0.55 with evidence).
+  - **Verification & Moderation Lifecycle (`POST /reports/{report_id}/verify`)**:
+    - Complete workflow verified: `PENDING_REVIEW` -> `COMMUNITY_VERIFIED` -> `AUTHORITY_VERIFIED` -> `OFFICIAL`, and `REJECTED`.
+    - Server-side RBAC strictly enforced:
+      * Citizen: can create reports, forbidden (`403`) from authority-verifying, community-verifying, or approving official status.
+      * Community: can submit community verification (`COMMUNITY_VERIFIED`), forbidden (`403`) from approving official status.
+      * Authority: can authority-verify (`AUTHORITY_VERIFIED`), approve official status (`OFFICIAL`), and reject reports (`REJECTED`).
+      * Admin: full moderation rights across all verification states.
+  - **Deterministic Civic Trust / Confidence Scoring**:
+    - Formula:
+      * `REJECTED`: `0.00`
+      * `PENDING_REVIEW`: `0.50` (or `0.55` with evidence metadata)
+      * `COMMUNITY_VERIFIED`: `0.75` base + `0.05` per additional supporting verification up to `0.90`
+      * `AUTHORITY_VERIFIED`: `0.95`
+      * `OFFICIAL`: `1.00`
+  - **Immutable Audit Trail (`GET /reports/{report_id}/audit-trail`)**:
+    - Captures `actor_id`, `action`, `entity_type`, `entity_id`, `previous_value` (old status), `new_value` (new status), `reason`, and `created_at` timestamp for every state change.
+
+- **Checks Run**:
+  - Citizen report: PASS
+  - Citizen restriction (403): PASS
+  - Community verification: PASS
+  - Authority verification / official approval: PASS
+  - Rejected workflow: PASS
+  - Audit log recording: PASS
+  - Related regression tests: PASS (16/16 passing)
+
+- **Known Issues / Limitations**:
+  - Image binary upload is modeled via `evidence_metadata` JSON URLs and telemetry; S3/GCS object storage bucket uploads can be attached in later stages.
+
+- **Next Stage**:
+  - Stage 8
 
 

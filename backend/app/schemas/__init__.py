@@ -67,6 +67,15 @@ from app.schemas.rankings import (
     UnderservedRankingsResponse,
 )
 
+from app.schemas.reports import (
+    ReportCreateRequest,
+    ReportVerificationRequest,
+    ReportVerificationItem,
+    AuditLogItem,
+    ReportResponse,
+    ReportDetailResponse,
+)
+
 __all__ = [
     "LoginRequest",
     "TokenResponse",
@@ -111,4 +120,10 @@ __all__ = [
     "GeoJSONFeatureCollection",
     "UnderservedAreaRankingItem",
     "UnderservedRankingsResponse",
+    "ReportCreateRequest",
+    "ReportVerificationRequest",
+    "ReportVerificationItem",
+    "AuditLogItem",
+    "ReportResponse",
+    "ReportDetailResponse",
 ]
