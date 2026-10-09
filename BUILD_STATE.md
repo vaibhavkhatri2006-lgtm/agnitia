@@ -1,72 +1,818 @@
-# Build State
+# CivicPulse Build State Tracking
 
-## Stage 0: Repository Structure & Scaffold
-- [x] Initialized Git Repository
-- [x] Created `frontend` directory using Vite (React + TS)
-- [x] Install dependencies (Tailwind, etc.)
-- [x] Define API_CONTRACT.md base
-
-## Stage 1: Data Models
-- [x] Expected frontend data models
-
-## Stage 2: Authentication & Routing
-- [x] Implement AuthContext
-- [x] Create Login UI
-- [x] Set up Protected Routes
-- [x] Implement AppLayout with role-aware navigation
-
-## Stage 3: UI Contracts for Core Metrics
-- [x] Create MetricCard component
-- [x] Create CoreMetricsPanel for Accessibility, Gap, Equity, Confidence, Reality Gap, Service Pressure
-- [x] Ensure Frontend does not compute analytics (delegated to backend)
-
-## Stage 4: Analysis & Simulation UI
-- [x] Build UI for recommendations & ranking
-- [x] Build UI for impact & simulation (before/after)
-- [x] Build UI for investment priority, resilience, future-risk
-
-## Stage 5: Core App Shell
-- [x] Primary routing & layout
-- [x] Loading / Error states
-- [x] Responsive navigation
-
-## Stage 6: Map Experience
-- [x] Integrate React-Leaflet
-- [x] Create CivicMap component (markers, popups, layers)
-- [x] Implement MapPage with layer controls
-
-## Stage 7: Community Reporting
-- [x] Create Report Reality form UI
-- [x] Photo/evidence upload UI
-- [x] Implement role restrictions (Citizen/Community only)
-- [x] Verification/Trust Center UI contracts
-
-## Stage 8: Planner Dashboard
-- [x] Build planner dashboard
-- [x] Underserved ranking & capacity pressure cards
-- [x] Reality gap & confidence panel
-- [x] Recommendation panel & UI
-
-## Stage 9: Scenario Lab & Simulation
-- [x] Scenario Lab UI
-- [x] Service simulation before/after charts
-- [x] Impact cards & investment comparison
-- [x] Future-risk visualization
-
-## Stage 10: Scale Selection
-- [x] Implement ScaleSelector component
-- [x] Connect scale states (Local to Global)
-- [x] Handle 'Data unavailable' state cleanly
-
-## Stage 11: QA & Testing
-- [x] Run TypeScript compiler
-- [x] Run build verification
-- [x] Test complete frontend user journeys
-
-## Stage 12: Polish & Presentation
-- [x] Final typography & responsive fixes
-- [x] Methodology page & 'Why CivicPulse'
-- [x] OSM attribution & demo-data disclaimer
+- **Current Stage**: Stage 12 (Hackathon Polish)
+- **Status**: PASS (All Stages 0 through 12 Completed)
+- **Production Readiness**: Full hackathon documentation suite created (`SETUP.md`, `PROJECT_REPORT.md`, `DEMO_SCRIPT.md`, `JUDGES_QA.md`, `README.md`). Backend startup, database migrations, deterministic seeding, frontend production build, and all 157 automated backend tests verified passing cleanly.
+- **Core Demo Flow**: End-to-end verified (**Map → Select locality → View service gap → Get recommendation → Run simulation → See impact**).
+- **Next Stage**: None (Project Complete)
 
 ---
-*All 12 frontend UI stages completed.*
+
+## Stage History
+
+### Stage 0: Project Foundation
+- **Result**: PASS
+- **Files Changed**:
+  - `.gitignore`, `.env.example`, `docker-compose.yml`, `API_CONTRACT.md`, `README.md`, `BUILD_STATE.md`, `docs/checkpoints/STAGE-00.md`
+  - `backend/.env.example`, `backend/.env`, `backend/Dockerfile`, `backend/requirements.txt`, `backend/run.py`, `backend/start_db.py`
+  - `backend/app/__init__.py`, `backend/app/config.py`, `backend/app/database.py`, `backend/app/main.py`
+  - `backend/tests/__init__.py`, `backend/tests/test_health.py`
+  - `frontend/*` (Vite + React scaffold - Person 1)
+
+---
+
+### Stage 1: Database + Demo Data
+- **Result**: PASS
+- **Database Architecture**:
+  - Relational & Geospatial engine supporting PostgreSQL/PostGIS (production/container) and SQLite with Shapely (local dev).
+  - Spatial custom decorator `SafeGeometry` managing SRID 4326 geometries (Point, Polygon, MultiPolygon).
+  - Multi-scale hierarchy support: City -> Ward/District -> Neighbourhood.
+- **Tables Created**:
+  - `data_sources`, `service_categories`, `geographic_areas`, `population_cells`, `services`, `service_capacities`, `community_reports`, `report_verifications`, `audit_logs`
+
+---
+
+### Stage 2: Backend Core + Auth
+- **Result**: PASS
+
+- **Auth Architecture**:
+  - Stateless JSON Web Tokens (JWT) signed via HS256 algorithm with configurable secret key and expiration.
+  - Salted password hashing with `bcrypt` (12 rounds) guaranteeing zero plain-text credential persistence.
+  - OAuth2 Password Bearer authentication scheme with `/auth/login` token endpoint.
+  - Server-side token validation extracting user identity and authorization claims directly from database sessions.
+  - Reusable FastAPI route dependencies: `get_current_user`, `require_active_user`, `require_role`, `require_permission`.
+
+- **Role Architecture (RBAC)**:
+  - `Role` model with Many-to-Many relationship to `Permission` via `role_permissions`.
+  - Four discrete system roles:
+    1. `citizen`: Public read access (`data:read`), civic report submission (`report:create`).
+    2. `community`: Citizen capabilities + peer community verification (`report:verify_community`).
+    3. `authority`: Municipal operations (`authority:operate`), official audit verification (`report:verify_official`).
+    4. `admin`: Full administrative control (`admin:manage`) and system oversight.
+
+- **Authentication Commands**:
+  - Login via API: `POST /auth/login` with JSON `{"email": "...", "password": "..."}`
+  - Check current identity: `GET /auth/me` with header `Authorization: Bearer <token>`
+  - Role verification tests: `GET /auth/verify-role/{authority|admin|community}`
+
+- **Demo Accounts**:
+  - `citizen@example.com` / `Citizen123!` (Role: `citizen`)
+  - `community@example.com` / `Community123!` (Role: `community`)
+  - `authority@example.com` / `Authority123!` (Role: `authority`)
+  - `admin@example.com` / `Admin123!` (Role: `admin`)
+  - `inactive@example.com` / `Inactive123!` (Role: `citizen`, Inactive - 403 test)
+
+- **Commands that Work**:
+  - Migrations: `backend\.venv\Scripts\alembic.exe upgrade head`
+  - Seeding: `backend\.venv\Scripts\python.exe backend\seed.py`
+  - Test Suite: `backend\.venv\Scripts\pytest.exe backend\tests` (60/60 passing)
+  - Backend Runner: `backend\.venv\Scripts\python.exe backend\run.py`
+
+- **Known Issues**:
+  - None. Server-side RBAC and token validation fully operational.
+
+---
+
+### Stage 3: Geospatial / Analytics Engine
+- **Result**: PASS
+
+- **Analytics Architecture**:
+  - Backend-owned deterministic civic calculation engine converting spatial, service, demand, capacity, and transport data into multi-dimensional accessibility metrics.
+  - Centralized, validated `AnalyticsConfig` governing:
+    - 30% Travel Time Score
+    - 20% Service Availability Score
+    - 20% Capacity Score
+    - 15% Transport Connectivity Score
+    - 15% Equity Score
+  - Deterministic distance via Haversine great-circle calculation and centroid extraction (WKT and GeoJSON).
+  - Pluggable `RoutingProvider` abstraction with `DeterministicRoutingProvider` using configurable transit and walking speed approximations.
+  - Operational availability scoring:
+    - `operational`: 100, `limited`: 60, `degraded`: 50, `temporarily_unavailable`: 20, `closed`: 0
+  - Service pressure calculation (`Demand / Available Capacity`) with categorical classification:
+    - `Low`, `Moderate`, `High`, `Critical`
+    - Graceful zero and missing capacity handling without division by zero.
+  - Baseline service desert classifications:
+    - 80–100: Well Served
+    - 60–79: Adequate
+    - 40–59: At Risk
+    - 20–39: Underserved
+    - 0–19: Critical Desert
+  - Deterministic Gap Score:
+    - `Gap Score = 100 - Accessibility Score` (guaranteed `0 <= Gap Score <= 100`)
+  - Ground truth integration calculating **Confidence Score** and **Reality Gap** from active citizen and community reports.
+
+- **Endpoints Created**:
+  - `GET /analytics/config`
+  - `GET /analytics/areas`
+  - `GET /analytics/areas/{area_id}`
+  - `GET /analytics/areas/{area_id}/category/{category_code}`
+  - `GET /analytics/deserts`
+
+---
+
+### Stage 4A: Candidate Location Engine
+- **Result**: PASS
+
+- **Candidate Generation Architecture**:
+  - Backend service `CandidateLocationService` identifying candidate infrastructure placement locations for `healthcare`, `education`, `transport`, `water`, and `market`.
+  - Multi-strategy candidate derivation:
+    - `centroid`: Interior centroid or representative point of the underserved locality.
+    - `population_node`: Highest-density demand center derived from population cell geometries or community clusters.
+    - `gap_perimeter`: Coverage gap point maximizing geographic distance from existing facilities to eliminate dead zones.
+  - Underserved area filtering:
+    - Excludes areas with sufficient access (`Well Served`, accessibility $\ge 80\%$).
+    - Ranks qualifying areas by gap score descending.
+  - Spatial and geographic validation:
+    - Validates coordinate bounds (`[-90, 90]`, `[-180, 180]`), finiteness (non-NaN/inf).
+    - Validates Shapely geometric topology and polygon boundary containment with buffer tolerance.
+    - Fault-tolerant rejection handling: invalid coordinates or broken geometries are flagged as `rejected` with reasons without terminating the batch.
+  - Spatial deduplication:
+    - Suppresses duplicate or overlapping candidate points within 0.0001 degrees (~11 meters).
+  - Determinism:
+    - Guarantee 100% deterministic output order sorted by `(area_id, strategy, candidate_id)`.
+
+- **Endpoints Created**:
+  - `GET /decision/candidates`
+  - `POST /decision/candidates/generate`
+
+- **Files Changed**:
+  - `backend/app/decision/__init__.py`
+  - `backend/app/decision/candidates.py`
+  - `backend/app/schemas/decision.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/decision.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_candidates.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04A.md`
+
+- **Checks Run**:
+  - Candidate generation: PASS
+  - Invalid geometry handling: PASS
+  - Invalid coordinate handling: PASS
+  - Unsupported service handling: PASS
+  - Deterministic output: PASS
+  - Duplicate prevention: PASS
+  - Backend startup / OpenAPI: PASS
+  - Full test suite: PASS (45/45 passing)
+
+- **Next Stage**:
+  - Stage 4B
+
+---
+
+### Stage 4B: Recommendation Scoring Engine
+- **Result**: PASS
+
+- **Recommendation Formula**:
+  - `Recommendation Score = (0.30 × Gap) + (0.25 × Population) + (0.15 × Travel Need) + (0.10 × Capacity Pressure) + (0.10 × Equity Need) + (0.05 × Connectivity) + (0.05 × Data Confidence)`
+  - Normalized strictly within 0.0 to 100.0.
+
+- **Factor Weights**:
+  - Gap Severity: 30%
+  - Population Affected: 25%
+  - Travel-Time Need: 15%
+  - Capacity Pressure: 10%
+  - Equity Need: 10%
+  - Connectivity: 5%
+  - Data Confidence: 5%
+  - Validated using Pydantic `RecommendationConfig` (weights sum strictly to 1.0).
+
+- **Normalization Method**:
+  - Gap: Clamped 0–100 deficit score.
+  - Population: Scaled against reference population (default 25,000 residents).
+  - Travel-Time Need: Inverse travel-time score (`100.0 - travel_time_score`), unreached = 100.0.
+  - Capacity Pressure: Service load mapping (`Critical` = 100, `High` = 75, `Moderate` = 50, `Low` = 20).
+  - Equity Need: Demographic vulnerability index (0–100).
+  - Connectivity: Transit accessibility index (0–100).
+  - Data Confidence: Telemetry/report agreement index (0–100).
+
+- **Ranking & Tie-Breaking Method**:
+  - Primary Sort: `recommendation_score` descending.
+  - Secondary Sort (Tie-breaker 1): `population` descending.
+  - Tertiary Sort (Tie-breaker 2): `candidate_id` ascending.
+  - Sequential ranks `1, 2, 3...` assigned.
+  - Invalid candidates excluded with recorded rejection reasons.
+
+- **API Endpoints**:
+  - `POST /recommendations`
+  - `GET /recommendations`
+
+- **Files Changed**:
+  - `backend/app/decision/recommendation.py`
+  - `backend/app/decision/__init__.py`
+  - `backend/app/schemas/recommendation.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/recommendations.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_recommendations.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04B.md`
+
+- **Checks Run**:
+  - Recommendation score calculation: PASS
+  - Weight validation: PASS
+  - Normalization: PASS
+  - Score range (0–100): PASS
+  - Ranking: PASS
+  - Tie-breaking: PASS
+  - Invalid candidates exclusion: PASS
+  - Missing data handling: PASS
+  - Explanation fields: PASS
+  - Service-type validation: PASS
+  - Stage 3 regression tests: PASS (14/14)
+  - Stage 4A regression tests: PASS (13/13)
+  - Backend startup / OpenAPI: PASS (15 endpoints)
+  - Seeded demo ranking: PASS (60/60 passing)
+
+- **Known Limitations**:
+  - Does not execute post-intervention simulation or budget optimization. Those belong to Stage 4C and Stage 5.
+
+- **Next Stage**:
+  - Stage 4C
+
+---
+
+### Stage 4C: What-If / Intervention Simulation
+- **Result**: PASS
+
+- **Simulation Design**:
+  - Core engine `InterventionSimulationService` in `app/decision/simulation.py`.
+  - In-memory ephemeral simulation utilizing isolated `additional_services` parameter across `AnalyticsEngine`.
+  - Strict safety guarantee: zero database writes, zero model insertions, zero modifications to official capacities, populations, or civic report records.
+  - Multi-input support: accepts either `candidate_id` (from Stage 4A/4B) or coordinates (`latitude`, `longitude`).
+  - Spatial containment resolution using Shapely geometric boundary checks to identify receiving neighbourhood.
+
+- **Metrics Calculated**:
+  - **Baseline (Before)**:
+    - `accessibility_score` (population-weighted, 0–100)
+    - `gap_score` (`100.0 - accessibility_score`, 0–100)
+    - `service_coverage` (% population in covered areas)
+    - `underserved_population` (residents living in deserts/underserved areas)
+    - `average_travel_time_minutes` (population-weighted average estimated travel time)
+  - **Post-Intervention (After)**:
+    - Same set of 5 standardized metrics evaluated with simulated facility in-memory.
+  - **Impact (Delta)**:
+    - `accessibility_improvement` (+ points)
+    - `gap_reduction` (- points)
+    - `coverage_improvement` (+ percentage points)
+    - `underserved_population_reduction` (people relieved)
+    - `population_gaining_access` (people transitioning from unserved to served)
+    - `travel_time_improvement_minutes` (minutes saved)
+  - **Target Area Breakdown**:
+    - Direct locality evaluation (e.g., Highlands Valley before: 13.1 -> after: 78.8, +65.7 pts; travel time saved: 57.9 min).
+  - **Natural Language Justification & Attribution**:
+    - Explanation strings with key factor identification (`travel_time_reduction`, `service_desert_resolution`, `underserved_population_relief`, `coverage_expansion`, `capacity_addition`).
+
+- **API Endpoints**:
+  - `POST /simulations`
+  - `GET /simulations`
+
+- **Files Changed**:
+  - `backend/app/analytics/engine.py`
+  - `backend/app/decision/simulation.py`
+  - `backend/app/decision/__init__.py`
+  - `backend/app/schemas/simulation.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/simulations.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/app/main.py`
+  - `backend/tests/test_simulations.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04C.md`
+
+- **Checks Run**:
+  - Valid simulation: PASS
+  - Invalid service type validation: PASS
+  - Invalid coordinates validation: PASS
+  - Invalid candidate rejection: PASS
+  - Before/after calculation consistency: PASS
+  - Coverage improvement: PASS (+23.9 pp in demo data)
+  - Underserved population reduction: PASS (22,000 residents relieved)
+  - Travel time improvement: PASS (>13 min saved citywide)
+  - Deterministic results: PASS
+  - Database integrity (no permanent writes): PASS
+  - Explanation fields & primary factors: PASS
+  - Negative/invalid impact protection: PASS
+  - Scope options (city vs area): PASS
+  - GET endpoint query-params: PASS
+  - All 5 service types: PASS
+  - Full regression test suite: PASS (76/76 passing)
+  - Backend startup & OpenAPI: PASS (16 paths)
+
+- **Known Limitations**:
+  - Multi-facility combinatorial portfolio optimization and dynamic disaster cascades belong to Stage 5.
+
+- **Next Stage**:
+  - Stage 4D
+
+---
+
+### Stage 4D: Investment + Resilience + Future Risk (Stage 4 Complete)
+- **Result**: PASS
+
+- **Features Implemented**:
+  1. **Task 1 — Investment Priority (`app.decision.investment`)**:
+     - Deterministic composite score: `35% Recommendation Score + 25% Expected Impact Score + 15% Gap Severity + 15% Population Factor + 10% Equity Need`.
+     - Output: Ranked interventions with strategic priority tiers (`Highest Priority`, `High Priority`, `Moderate Priority`, `Low Priority`), estimated standard cost tiers, and civic justifications.
+     - Stable secondary/tertiary tie-breaking (`-investment_priority_score`, `-population`, `candidate_id`).
+  2. **Task 2 — Failure / Resilience Simulation (`app.decision.resilience`)**:
+     - In-memory facility outage simulation without database mutations (`excluded_service_ids`).
+     - Systemic resilience score (0–100), coverage collapse percentage, newly underserved population count, directly affected population count.
+     - Single point of failure detection (`Critical Infrastructure / Single Point of Failure`, `High Dependency`, `Moderate Vulnerability`, `Resilient / Redundant`).
+  3. **Task 3 — Future-Risk Foundation (`app.decision.future_risk`)**:
+     - Deterministic forward-looking civic risk projections under configurable population demand growth (e.g. 15% growth, 5 years).
+     - Capacity saturation and headroom depletion evaluation.
+     - Explicit demo labeling (`is_demo_estimate: True`, planning disclaimers).
+
+- **Complete Decision Engine Architecture (Stage 4)**:
+  - `Candidate (4A)`: Multi-strategy spatial allocation (`centroid`, `population_node`, `gap_perimeter`) with geometric boundary validation.
+  - `Recommendation (4B)`: 7-factor transparent normalized scoring (0–100) with stable tie-breaking and explainable reasons.
+  - `Simulation (4C)`: In-memory Before vs After what-if intervention impact measuring accessibility gains, coverage expansion, and underserved relief.
+  - `Investment Priority (4D)`: Strategic capital allocation ranking balancing recommendation alignment, urgency, population scale, equity, and simulated impact return.
+  - `Failure Scenario (4D)`: In-memory service outage testing identifying systemic single points of failure and network resilience.
+  - `Future Risk (4D)`: Forward-looking demand growth risk foundation.
+
+- **API Endpoints**:
+  - `POST /decision/candidates/generate` & `GET /decision/candidates`
+  - `POST /recommendations` & `GET /recommendations`
+  - `POST /simulations` & `GET /simulations`
+  - `POST /decision/investment-priorities` & `GET /decision/investment-priorities`
+  - `POST /decision/failure-simulation` & `GET /decision/failure-simulation`
+  - `POST /decision/future-risk` & `GET /decision/future-risk`
+
+- **Files Changed**:
+  - `backend/app/analytics/engine.py`
+  - `backend/app/decision/investment.py`
+  - `backend/app/decision/resilience.py`
+  - `backend/app/decision/future_risk.py`
+  - `backend/app/decision/__init__.py`
+  - `backend/app/schemas/investment.py`
+  - `backend/app/schemas/resilience.py`
+  - `backend/app/schemas/future_risk.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/decision.py`
+  - `backend/tests/test_stage4d.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-04D.md`
+
+- **Checks Run**:
+  - Investment ranking test: PASS
+  - Failure simulation test: PASS
+  - Future risk test: PASS
+  - Deterministic output test: PASS
+  - Invalid input test: PASS
+  - Stage 4A regression tests: PASS (14/14)
+  - Stage 4B regression tests: PASS (15/15)
+  - Stage 4C regression tests: PASS (16/16)
+  - Full test suite: PASS (82/82 passing)
+  - Database integrity check (counts unmutated): PASS
+  - Backend startup / OpenAPI: PASS (19 API paths)
+
+- **Known Limitations**:
+  - Live AI planning agents, LLM report narrative generation, and citizen reporting workflows belong to Stage 6.
+
+- **Next Stage**:
+  - Stage 5
+
+---
+
+### Stage 5: Frontend Integration Support
+- **Result**: PASS
+- **API Integration Status**: Ready for Person 1's React Frontend Connection
+
+- **Features & Enhancements Implemented**:
+  1. **CORS & Environment Foundation**:
+     - Configured safe credentialed CORS in `app.config.Settings` and `app.main`.
+     - Supports `ALLOWED_ORIGINS` and `FRONTEND_URL` environment variables (defaulting to Vite dev port `http://localhost:5173`, `http://127.0.0.1:5173`, and `http://localhost:3000`).
+     - Hardened against unsafe unrestricted credentialed wildcards (`allow_origins=["*"]` strictly prevented when credentials are enabled).
+  2. **Standardized JSON Error Schema**:
+     - Globally unified error responses across all HTTP status codes:
+       - `400 Bad Request` (`HTTP_400`)
+       - `401 Unauthorized` (`HTTP_401`)
+       - `403 Forbidden` (`HTTP_403`)
+       - `404 Not Found` (`HTTP_404`)
+       - `422 Unprocessable Entity` (`VALIDATION_ERROR` with structured `"errors"` list)
+       - `500 Internal Server Error` (`INTERNAL_SERVER_ERROR`)
+     - Predictable format containing `detail`, `status_code`, and `error_code`.
+  3. **Locality & Infrastructure Endpoints**:
+     - `GET /areas`: Administrative boundaries and neighbourhoods listing.
+     - `GET /areas/{area_id}`: Locality metadata lookup.
+     - `GET /services`: Cataloged civic facilities with filters (`category_code`, `area_id`, `status`).
+     - `GET /services/{service_id}`: Facility detail lookup for map pins and resilience failure simulation.
+     - `GET /services/categories`: Active civic service categories list.
+  4. **Frontend-Safe Response Serialization**:
+     - Validated Pydantic models preventing invalid NaN/infinite floats, missing fields, or null pointer crashes.
+     - Safe handling of zero facilities in catchment (deserts return cleanly with indicators).
+  5. **Demo Mode Integrity**:
+     - 100% offline, reproducible execution with seeded SQLite/PostGIS database.
+     - Zero external network dependencies.
+
+- **Files Changed**:
+  - `backend/app/config.py`
+  - `backend/app/main.py`
+  - `backend/app/schemas/infrastructure.py`
+  - `backend/app/schemas/errors.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/services.py`
+  - `backend/app/routes/areas.py`
+  - `backend/app/routes/__init__.py`
+  - `backend/tests/test_stage5.py`
+  - `.env.example`
+  - `backend/.env.example`
+  - `backend/.env`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-05.md`
+
+- **Checks Run**:
+  - Backend startup: PASS
+  - `/health` check: PASS
+  - Login & token issuance: PASS
+  - `/auth/me` inspection: PASS
+  - Invalid/expired token rejection (401): PASS
+  - Server-side RBAC enforcement (403): PASS
+  - Safe credentialed CORS: PASS
+  - Standard error structures (400, 401, 403, 404, 422, 500): PASS
+  - All core documented APIs: PASS
+  - Frontend-safe determinism: PASS
+  - Full regression test suite: PASS (90/90 passing)
+
+- **Known Limitations**:
+  - Real-time websocket subscriptions and external GIS tiles belong to later stages.
+
+- **Next Stage**:
+  - Stage 6
+
+---
+
+### Stage 6: Map + Core Dashboard Backend
+- **Result**: PASS
+- **Status**: Map and Core Dashboard Backend Ready for Person 1
+
+- **Features & Enhancements Implemented**:
+  1. **Locality Polygon GeoJSON (`GET /areas/geojson`, `GET /areas/{area_id}/geojson`)**:
+     - Standard RFC 7946 GeoJSON FeatureCollection and Feature representations.
+     - Fully WGS84 CRS compliant polygon/multipolygon geometries parsed via Shapely.
+     - Optional analytics property injection (`accessibility_score`, `gap_score`, `desert_classification`, `categories_evaluated`).
+     - Supports administrative filtering (`area_type`, `parent_id`).
+  2. **Service Point GeoJSON (`GET /services/geojson`)**:
+     - Standard GeoJSON Point FeatureCollection for facilities.
+     - GeoJSON coordinate order `[longitude, latitude]` for immediate consumption by Leaflet marker layers.
+     - Supports filters: `category_code`, `area_id`, `status`.
+  3. **Underserved Rankings Leaderboard (`GET /analytics/rankings/underserved`)**:
+     - Deterministic prioritization ranking of areas from most underserved to least underserved.
+     - Supports composite ranking and category-specific rankings (e.g. healthcare, education, transport, water, market).
+     - Deterministic tie-breaking (`-gap_score`, `-population`, `area_id`).
+     - Powers the Core Dashboard's "Top Underserved Areas" leaderboard and map quick-filter controls.
+  4. **Selected Locality Full Dashboard Metrics (`GET /analytics/areas/{area_id}`)**:
+     - Complete, verified scorecard metrics:
+       - Accessibility Score (0–100)
+       - Gap Score (0–100)
+       - Service Desert Classification
+       - Population
+       - Nearest facility name, distance (km), and travel time (min)
+       - Capacity, current load, and service pressure classification
+       - Equity score
+       - Data confidence score
+       - Reality Gap indicators from community ground reports
+  5. **Fault-Tolerant & Empty Data Handling**:
+     - Safe fallbacks for missing/unlocated geometries (`geometry: None` conforming to RFC 7946).
+     - Empty result sets for non-matching filters without exceptions.
+     - Zero duplicate calculation logic, strictly leveraging existing Stage 3 analytics engine.
+
+- **Files Changed**:
+  - `backend/app/analytics/geojson.py`
+  - `backend/app/schemas/geojson.py`
+  - `backend/app/schemas/rankings.py`
+  - `backend/app/schemas/__init__.py`
+  - `backend/app/routes/areas.py`
+  - `backend/app/routes/services.py`
+  - `backend/app/routes/analytics.py`
+  - `backend/tests/test_stage6.py`
+  - `API_CONTRACT.md`
+  - `BUILD_STATE.md`
+  - `docs/checkpoints/STAGE-06.md`
+
+- **Checks Run**:
+  - Map / Locality API: PASS
+  - Service API: PASS
+  - GeoJSON validation: PASS
+  - Accessibility / Gap API: PASS
+  - Ranking API: PASS
+  - Selected-area metrics: PASS
+  - Empty-data handling: PASS
+  - Stage 3 regression tests: PASS (14/14)
+  - Stage 4 regression tests: PASS (51/51)
+  - Full test suite: PASS (98/98 passing)
+  - Backend startup: PASS
+
+- **Known Limitations**:
+  - Vector tile caching (MVT) and WebSockets belong to later stages.
+
+- **Next Stage**:
+  - Stage 7
+
+---
+
+### Stage 7: Community + Civic Trust
+- **Result**: PASS
+- **Status**: Backend Community Reporting, Civic Trust, and Verification Workflow Fully Operational
+
+- **Trust Workflow Summary**:
+  - **Report Creation (`POST /reports`)**:
+    - Citizens, community members, and authorities can report infrastructure issues.
+    - Captures title, description, category/service, coordinates, severity, and optional evidence metadata.
+    - Sets initial lifecycle state: `SUBMITTED` -> `PENDING_REVIEW` with initial audit log entry.
+    - Initial baseline confidence calculated dynamically (0.50 base, 0.55 with evidence).
+  - **Verification & Moderation Lifecycle (`POST /reports/{report_id}/verify`)**:
+    - Complete workflow verified: `PENDING_REVIEW` -> `COMMUNITY_VERIFIED` -> `AUTHORITY_VERIFIED` -> `OFFICIAL`, and `REJECTED`.
+    - Server-side RBAC strictly enforced:
+      * Citizen: can create reports, forbidden (`403`) from authority-verifying, community-verifying, or approving official status.
+      * Community: can submit community verification (`COMMUNITY_VERIFIED`), forbidden (`403`) from approving official status.
+      * Authority: can authority-verify (`AUTHORITY_VERIFIED`), approve official status (`OFFICIAL`), and reject reports (`REJECTED`).
+      * Admin: full moderation rights across all verification states.
+  - **Deterministic Civic Trust / Confidence Scoring**:
+    - Formula:
+      * `REJECTED`: `0.00`
+      * `PENDING_REVIEW`: `0.50` (or `0.55` with evidence metadata)
+      * `COMMUNITY_VERIFIED`: `0.75` base + `0.05` per additional supporting verification up to `0.90`
+      * `AUTHORITY_VERIFIED`: `0.95`
+      * `OFFICIAL`: `1.00`
+  - **Immutable Audit Trail (`GET /reports/{report_id}/audit-trail`)**:
+    - Captures `actor_id`, `action`, `entity_type`, `entity_id`, `previous_value` (old status), `new_value` (new status), `reason`, and `created_at` timestamp for every state change.
+
+- **Checks Run**:
+  - Citizen report: PASS
+  - Citizen restriction (403): PASS
+  - Community verification: PASS
+  - Authority verification / official approval: PASS
+  - Rejected workflow: PASS
+  - Audit log recording: PASS
+  - Related regression tests: PASS (16/16 passing)
+
+- **Known Issues / Limitations**:
+  - Image binary upload is modeled via `evidence_metadata` JSON URLs and telemetry; S3/GCS object storage bucket uploads can be attached in later stages.
+
+- **Next Stage**:
+  - Stage 8
+
+---
+
+### Stage 8: Planner Command Center Backend
+- **Result**: PASS
+- **Status**: Planner Command Center APIs Ready and Fully Operational
+
+- **Planner Command Center Capabilities**:
+  - **Underserved Ranking (`GET /planner/rankings`)**:
+    - Prioritized leaderboard ranking monitored localities by severity of unmet civic need.
+    - Fields: `rank`, `area`, `area_id`, `accessibility`, `gap`, `population`, `main_service_gap`, `priority` (Critical, High, Medium, Low).
+    - Deterministic sorting by `(-gap, -population, area_id)`.
+  - **Service Comparison (`GET /planner/service-comparison`)**:
+    - Direct multi-sector comparison across 5 core civic domains: `healthcare`, `education`, `transport`, `water`, `market`.
+    - Evaluates accessibility score, gap score, desert classification, distance (km), travel time (min), and capacity status.
+    - Supports both locality-specific and city-wide comparative aggregations.
+  - **Capacity Pressure (`GET /planner/capacity-pressure`)**:
+    - Evaluates demographic demand against nominal facility capacities.
+    - Fields: `demand`, `capacity`, `pressure` (demand/capacity ratio), `status` (Low, Moderate, High, Critical), and `utilization_pct`.
+    - Supports breakdown by sector and geographic locality.
+  - **Equity & Reality Gap Diagnostics (`GET /planner/equity-reality-gap`, `/planner/equity`, `/planner/reality-gap`)**:
+    - Demographic equity score with explainable contributing factors.
+    - Ground-truth reality gap tracking: nominal map access score vs real-world score adjusted for active verified community reports, reality gap discrepancy, and data confidence.
+  - **Ranked Recommendations (`GET /planner/recommendations`)**:
+    - Uses existing Stage 4 recommendation engine and Stage 4C simulation engine without duplicating code.
+    - Fields: `recommended_candidate` (spatial/demographic metadata), `score`, `rank`, `reasons` (explainable drivers), `expected_impact` (accessibility gain, coverage gain, impact score, summary), and `confidence`.
+  - **Unified Dashboard Overview (`GET /planner/overview`)**:
+    - Bundles rankings, service comparison, capacity pressure, and top recommended intervention for single-call dashboard hydration.
+  - **Server-Side RBAC Enforcement**:
+    - All `/planner/*` endpoints require `authority` or `admin` authentication roles.
+    - Restricted `citizen` accounts receive `403 Forbidden`.
+    - Unauthenticated requests receive `401 Unauthorized`.
+
+- **Checks Run**:
+  - Ranking API: PASS
+  - Service comparison API: PASS
+  - Capacity pressure API: PASS
+  - Equity & reality gap API: PASS
+  - Recommendation API: PASS
+  - Authority permission / RBAC check: PASS
+  - Previous-stage regression tests: PASS (24/24 passing)
+
+- **Known Issues / Limitations**:
+  - Multi-facility simultaneous portfolio optimization belongs to future enhancement phases.
+
+- **Next Stage**:
+  - Stage 9
+
+---
+
+### Stage 9: Scenario Lab + Investment + Resilience
+- **Result**: PASS
+- **Status**: Backend Scenario Lab, What-If Simulation, Investment Priority, and Resilience APIs Fully Operational
+
+- **Implemented & Finalized Capabilities**:
+  - **What-If Intervention Simulation (`POST & GET /simulations`)**:
+    - Simulates placement of a civic facility at candidate location or custom coordinates.
+    - Evaluates before/after accessibility, coverage, underserved population, and travel-time metrics.
+    - Guarantees zero official database mutation via isolated in-memory model instances.
+  - **Scenario Comparison (`POST & GET /simulations/scenarios`, `/decision/scenarios`)**:
+    - Compares baseline current infrastructure against single-facility and multi-facility configurations.
+    - Supports automated candidate comparison (Current, 1 Facility, 2 Facilities) and custom multi-facility definitions.
+    - Computes consistent, deterministic impact deltas against baseline.
+  - **Investment Priority Ranking (`POST & GET /decision/investment-priorities`)**:
+    - Ranks strategic interventions using multi-factor objective scoring: recommendation alignment, population affected, gap severity, and equity.
+    - Produces deterministic scores, priority tiers, and explainable rationale without financial speculation.
+  - **Facility Failure & Resilience Simulation (`POST & GET /decision/failure-simulation`)**:
+    - Models critical facility downtime/failure in-memory to calculate systemic resilience drop.
+    - Returns directly affected population, accessibility drop, coverage loss, newly underserved population, and single point of failure identification.
+  - **Future-Risk Projections (`POST & GET /decision/future-risk`)**:
+    - Proposes forward-looking demographic stress testing under configurable demand growth rates.
+
+- **Checks Run**:
+  1. Add-service simulation returns valid before/after metrics: PASS
+  2. Scenario comparison returns consistent results: PASS
+  3. Investment ranking is deterministic: PASS
+  4. Facility failure produces valid impact metrics: PASS
+  5. Invalid inputs are rejected: PASS
+  6. Simulation does not permanently modify official data: PASS
+  7. Relevant Stage 4 and Stage 8 regression tests pass: PASS (37/37 passing across test_stage9, test_simulations, test_stage4d, test_stage8)
+
+- **Known Issues / Limitations**:
+  - Multi-facility candidate portfolio optimization runs in-memory and scales linearly with number of evaluated scenarios.
+
+- **Next Stage**:
+  - Stage 10
+
+---
+
+### Stage 10: Multi-Scale Experience Backend
+- **Result**: PASS
+- **Status**: Multi-Scale Geographic Analysis & Hierarchy Verification Fully Operational
+
+- **Implemented Geographic Levels**:
+  - Local (fine-grained population cells and census blocks)
+  - Neighbourhood (primary community residential zones)
+  - District / Ward (electoral administrative wards and municipal districts)
+  - City (consolidated metropolitan urban boundary)
+  - Region / State (metropolitan regional planning authority or provincial state)
+  - Country (national sovereign territory)
+  - Global (international comparative indicators)
+
+- **Supported vs Unavailable Data Scopes**:
+  - **Supported Scopes (Data Present)**: `local`, `neighbourhood`, `ward`, `city`
+  - **Unavailable Scopes (Data Absent)**: `region`, `country`, `global`
+  - Explicit, structured no-data responses returned for unavailable scales (`status: "no_data"`, `available: false`, without fabricating synthetic data).
+
+- **Multi-Scale APIs Implemented**:
+  - `GET /areas/scopes`: Discovers data availability for all canonical scales.
+  - `GET /areas/hierarchy`: Recursive geographic hierarchy tree.
+  - `GET /areas/hierarchy/validate`: Parent-child relationship integrity audit.
+  - `POST /areas/hierarchy/validate-relationship`: Scale ordering verification.
+  - `GET /analytics/multiscale`: Scope-aware analytics aggregation and safe no-data responses.
+  - `GET /analytics/rankings/underserved`: Scope-filtered underserved rankings.
+  - `GET /planner/rankings`: Scope-filtered authority planner rankings with RBAC.
+
+- **Checks Run**:
+  1. Switching scope changes metrics when the underlying data differs: **PASS**
+  2. Permissions are respected: **PASS**
+  3. API accepts and validates geographic hierarchy: **PASS**
+  4. Parent-child relationships are valid: **PASS**
+  5. Ranking works for each supported scope: **PASS**
+  6. Unavailable data returns a safe no-data response: **PASS**
+  - Directly affected regression tests: **PASS** (35/35 passing across `test_stage10`, `test_analytics`, `test_stage8`, `test_stage6`)
+
+- **Known Limitations**:
+  - Multi-scale demographic cross-boundary interpolation and spatial clipping for regional watersheds can be extended in future GIS expansions.
+
+- **Next Stage**:
+  - Real Data Mode (Completed)
+
+---
+
+### Real Data Mode + OpenStreetMap Integration
+- **Result**: PASS
+- **Status**: Real Data Mode Fully Implemented & DEMO Mode Completely Preserved
+
+- **Key Capabilities & Architecture**:
+  1. **Operational Mode Management (`GET & POST /mode`)**:
+     - Seamless runtime switching between `DEMO MODE` (deterministic synthetic dataset) and `REAL DATA MODE` (live OpenStreetMap ingestion with verified provenance).
+     - Response exposes current mode, description, active data sources (`["osm", "official_census", "documented_public"]` vs `["simulated_demo", "synthetic_baseline"]`), and OSRM status.
+     - Fully backward-compatible; DEMO MODE remains the default and functions 100% offline without network or API keys.
+  2. **OpenStreetMap Data Retrieval via Overpass API (`POST /osm/import`, `GET /osm/query`)**:
+     - Dynamic Overpass QL query construction targeting:
+       * **Healthcare**: `amenity=hospital`, `amenity=clinic`, `amenity=doctors`, `amenity=pharmacy`, `healthcare=hospital/clinic/centre`
+       * **Education**: `amenity=school`, `amenity=college`, `amenity=kindergarten`, `amenity=university`
+       * **Transport**: `highway=bus_stop`, `public_transport=stop_position/platform`, `railway=station/halt`, `amenity=bus_station`
+       * **Water**: `amenity=drinking_water`, `amenity=water_point`, `man_made=water_tap/water_well`, `emergency=drinking_water`
+       * **Market**: `amenity=marketplace`, `shop=supermarket`, `shop=convenience`, `shop=greengrocer`, `shop=general`
+     - Supports bounding boxes `[south, west, north, east]`, locality center coordinates + search radius, or geographic area ID.
+  3. **Strict Coordinate Validation & Deduplication**:
+     - Validates finite floats, latitude `[-90, 90]`, longitude `[-180, 180]`, and strictly rejects (0, 0) "Null Island".
+     - Spatial deduplication eliminates overlapping facilities within 15 meters in the same category across both the ingestion batch and existing database records.
+  4. **Data Provenance & Audit Trail (`GET /osm/provenance/{service_id}`, `GET /services/{service_id}/provenance`)**:
+     - Every imported service is stored with `source_type="osm"`, `confidence_score=0.85`, and retrieval timestamp in `created_at`.
+     - Full provenance JSON record saved in `AuditLog` table: OSM element ID, OSM element type, raw tags, attribution ("© OpenStreetMap contributors"), license ("ODbL 1.0"), query endpoint, retrieval ISO timestamp.
+     - Batch-level ingestion audit log records total raw elements, imported count, deduplicated count, invalid coordinates count, and category breakdown.
+  5. **Population Integrity Guarantee**:
+     - Strictly enforces no fabrication of synthetic population numbers.
+     - Documented population from census or public datasets is recorded when supplied (`population_status="documented"`).
+     - If population data is missing, it is marked as `population_status="unavailable"` and `population_count=None`.
+  6. **OSRM Routing Integration with Graceful Fallback**:
+     - `OSRMRoutingProvider` activates only when `USE_OSRM=True` and `OSRM_BASE_URL` is configured.
+     - Clearly labels all travel times with `"is_estimate": True` and provider provenance (`"osrm"`).
+     - Automatically falls back to deterministic routing approximation on network timeouts or provider failures (`provider: "fallback_deterministic"` with explanatory warning).
+  7. **Responsible API Caching & Rate Limiting (`GET /osm/cache/stats`, `POST /osm/cache/clear`)**:
+     - In-memory SHA256 query cache with configurable TTL (`OSM_CACHE_TTL_HOURS = 24`).
+     - Respectful rate-limiting cooldown (minimum 1.0 second between consecutive live queries).
+     - Custom User-Agent header conforming to OSM usage policy.
+  8. **Service API Mode Filtering**:
+     - `GET /services` and `GET /services/geojson` accept `?mode=demo` or `?mode=real` to view synthetic vs real-world facilities on the dashboard.
+
+- **Checks Run**:
+  1. Operational mode toggle and metadata: **PASS**
+  2. Overpass query generation for all 5 categories: **PASS**
+  3. Coordinate validation and bounds rejection: **PASS**
+  4. Spatial deduplication (15m threshold): **PASS**
+  5. OSM ingestion with mock Overpass payload: **PASS**
+  6. Provenance recording and AuditLog verification: **PASS**
+  7. Population integrity (never synthesizing missing data): **PASS**
+  8. OSRM routing and graceful deterministic fallback: **PASS**
+  9. Overpass query cache telemetry and cache clear: **PASS**
+  10. Mode query filtering on services and GeoJSON: **PASS**
+  - New test suite: `backend/tests/test_real_data_mode.py` (18/18 tests passing)
+  - Regression test suite: **144/144 tests passing** across entire project
+
+- **Next Stage**:
+  - Stage 11 (Completed)
+
+---
+
+### Stage 11: Final Integration + QA
+- **Result**: PASS
+- **Status**: Complete End-to-End Integration, QA, and Production Readiness Verified
+
+- **Summary of Verification Results**:
+  1. **Clean Application Startup**:
+     - Database connects and runs with clean schema via Alembic.
+     - Deterministic demo seed (`seed.py`) populates 12 entity types idempotently.
+     - FastAPI backend runs with valid health probe (`GET /health` -> 200 OK, database: connected).
+     - React frontend builds with 0 errors (`vite build` in 771ms) and passes linting (`oxlint` with 0 warnings/errors).
+     - Frontend dev server starts and serves HTTP 200 on port 5173.
+  2. **Critical User Flow Verified**:
+     - **Map & Infrastructure**: Locality boundaries (`GET /areas/geojson`) and service pins (`GET /services/geojson`) load as valid GeoJSON FeatureCollections.
+     - **Select Locality & View Service Gap**: Selected locality (Highlands Valley) returns full multi-sector scorecard (`GET /analytics/areas/{area_id}`) and healthcare gap analysis.
+     - **Underserved Rankings**: Leaderboard ranking loads accurately (`GET /analytics/rankings/underserved`).
+     - **Recommendations**: Candidate recommendations generated with explainable scoring factor weights (`POST /recommendations`).
+     - **Simulation & Measured Impact**: What-if intervention simulation evaluated in-memory (`POST /simulations`), showing verified before/after gains (+accessibility, +coverage, +underserved relief) with zero database corruption.
+     - **Community Report Lifecycle**: Complete workflow verified from submission (`PENDING_REVIEW`) to community verification (`COMMUNITY_VERIFIED`) to authority approval (`OFFICIAL`) with immutable audit trails.
+  3. **Role-Based Access Control**:
+     - All 4 roles (Citizen, Community, Authority, Admin) verified with JWT login.
+     - Authority-only planner endpoints (`/planner/*`) strictly enforce 403 Forbidden for citizen tokens.
+     - Invalid credentials (401) and inactive accounts (403) rejected as expected.
+  4. **Test Suite Execution**:
+     - Stage 11 E2E suite (`test_stage11_e2e.py`): **13/13 PASS**.
+     - Full backend test suite: **157/157 PASS** across all stages.
+     - Zero remaining blockers.
+
+- **Next Stage**:
+  - Stage 12 (Completed)
+
+---
+
+### Stage 12: Hackathon Polish
+- **Result**: PASS
+- **Status**: Production Polish, Complete Documentation Suite, and Verification Hardened
+
+- **Key Achievements & Deliverables**:
+  1. **Comprehensive Documentation Suite**:
+     - `SETUP.md`: Complete quickstart and environment guide with exact Windows PowerShell and Linux/macOS commands.
+     - `PROJECT_REPORT.md`: In-depth architectural, mathematical, and impact report covering all 7 engines.
+     - `DEMO_SCRIPT.md`: High-impact 3-minute hackathon presentation script.
+     - `JUDGES_QA.md`: Technical defense addressing determinism, routing, data integrity, security, and scalability.
+     - `README.md`: Overhauled project overview with feature maps, test status, and documentation links.
+     - `docs/checkpoints/STAGE-12.md`: Official Stage 12 checkpoint audit.
+  2. **Final Verification Checks**:
+     - Backend server startup: PASS (`http://127.0.0.1:8000/health` -> 200 OK)
+     - Database migrations & deterministic seed: PASS (12 entity types seeded idempotently)
+     - Frontend production build: PASS (`vite build` in 771ms, 0 errors)
+     - Frontend linting: PASS (`oxlint` 0 warnings/errors across 104 rules)
+     - Frontend dev server: PASS (HTTP 200 on port 5173)
+     - Authentication & RBAC (Citizen, Community, Authority, Admin): PASS
+     - Core Demo Flow (Map -> Locality -> Gap -> Rec -> Sim -> Impact): PASS
+     - Dual Modes (Offline Demo Mode vs Real Data Mode): PASS
+     - Automated test suite: **157/157 tests passing (100% pass rate)**
+  3. **Known Limitations**:
+     - Automated brute-force combinatorial multi-facility optimization across hundreds of simultaneous candidate locations is computationally intensive and reserved for Stage 12+ cloud compute clusters.
+     - Multi-scale analysis supports Local, Neighbourhood, Ward, and City; higher tiers (State, Country) return clean safe no-data responses until regional GIS raster datasets are ingested.
+
+- **Next Stage**:
+  - None (Project Complete — All Stages 0 through 12 PASS)
+
+
+
