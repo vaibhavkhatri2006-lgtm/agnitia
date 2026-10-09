@@ -2,7 +2,7 @@
 
 - **Current Stage**: Stage 12 (Hackathon Polish)
 - **Status**: PASS (All Stages 0 through 12 Completed)
-- **Production Readiness**: Full hackathon documentation suite created (`SETUP.md`, `PROJECT_REPORT.md`, `DEMO_SCRIPT.md`, `JUDGES_QA.md`, `README.md`). Backend startup, database migrations, deterministic seeding, frontend production build, and all 157 automated backend tests verified passing cleanly.
+- **Production Readiness**: Full hackathon documentation suite created (`SETUP.md`, `PROJECT_REPORT.md`, `DEMO_SCRIPT.md`, `JUDGES_QA.md`, `README.md`). Backend startup, database migrations, deterministic seeding, frontend production build, OpenStreetMap Overpass live service location provider, and all 161 automated backend tests verified passing cleanly.
 - **Core Demo Flow**: End-to-end verified (**Map → Select locality → View service gap → Get recommendation → Run simulation → See impact**).
 - **Next Stage**: None (Project Complete)
 
@@ -800,13 +800,14 @@
   2. **Final Verification Checks**:
      - Backend server startup: PASS (`http://127.0.0.1:8000/health` -> 200 OK)
      - Database migrations & deterministic seed: PASS (12 entity types seeded idempotently)
-     - Frontend production build: PASS (`vite build` in 771ms, 0 errors)
-     - Frontend linting: PASS (`oxlint` 0 warnings/errors across 104 rules)
+     - Frontend production build: PASS (`vite build` in 21s, 0 errors)
+     - Frontend linting: PASS (`oxlint` 0 errors across 116 rules)
      - Frontend dev server: PASS (HTTP 200 on port 5173)
      - Authentication & RBAC (Citizen, Community, Authority, Admin): PASS
      - Core Demo Flow (Map -> Locality -> Gap -> Rec -> Sim -> Impact): PASS
      - Dual Modes (Offline Demo Mode vs Real Data Mode): PASS
-     - Automated test suite: **157/157 tests passing (100% pass rate)**
+     - OpenStreetMap Overpass Live Provider: PASS (`GET /osm/services`, points & areas normalized, deterministic fallback)
+     - Automated test suite: **161/161 tests passing (100% pass rate)**
   3. **Known Limitations**:
      - Automated brute-force combinatorial multi-facility optimization across hundreds of simultaneous candidate locations is computationally intensive and reserved for Stage 12+ cloud compute clusters.
      - Multi-scale analysis supports Local, Neighbourhood, Ward, and City; higher tiers (State, Country) return clean safe no-data responses until regional GIS raster datasets are ingested.

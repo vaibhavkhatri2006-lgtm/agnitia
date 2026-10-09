@@ -1645,5 +1645,158 @@ Supports scale-aware analysis across recognized administrative tiers: Local, Nei
 }
 ```
 
+---
 
+#### 14. Real Data Mode & OpenStreetMap Overpass Service Location Provider
 
+Enables real OpenStreetMap data ingestion via Overpass API for live amenities (healthcare: hospitals, clinics, doctors; education: schools, colleges, universities; transport: bus stops, railway stations; water; food markets). Features standardized normalized schema, point and area feature support with centroid extraction, deterministic offline demo fallback, response caching, rate limiting, and zero personal API key requirements.
+
+##### `GET /mode`
+- **Description:** Returns the active system data operational mode (`DEMO` or `REAL_DATA`), cache size, rate limit remaining, and feature status.
+- **Response `200 OK`**:
+```json
+{
+  "mode": "DEMO",
+  "is_demo": true,
+  "rate_limit_remaining": 60,
+  "cache_size": 0,
+  "supported_categories": ["healthcare", "education", "transport", "water", "market"],
+  "attribution": "© OpenStreetMap contributors (ODbL 1.0)",
+  "features": {
+    "overpass_import": true,
+    "census_fallback": true,
+    "osrm_routing": true,
+    "provenance_tracking": true
+  }
+}
+```
+
+##### `POST /mode`
+- **Description:** Toggles active data mode between `DEMO` and `REAL_DATA`. Requires authority role.
+- **Headers:** `Authorization: Bearer <jwt_token>`
+- **Request Body:**
+```json
+{
+  "mode": "REAL_DATA"
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "previous_mode": "DEMO",
+  "current_mode": "REAL_DATA",
+  "message": "Operational mode switched to REAL_DATA. Live Overpass and OSRM providers active."
+}
+```
+
+##### `GET /osm/services`
+- **Description:** Retrieves normalized service amenities for a locality or bounding box from OpenStreetMap Overpass API (with deterministic demo fallback). Normalizes points and polygon areas into representative coordinates.
+- **Query Parameters:**
+  - `locality_name` (optional string): e.g. `"Downtown Core"`
+  - `area_id` (optional integer): Geographic area ID
+  - `category` (optional string, default: `"healthcare"`): `healthcare`, `education`, `transport`, `water`, `market`
+  - `bbox` (optional string): Comma-separated `min_lat,min_lon,max_lat,max_lon`
+- **Response `200 OK`**:
+```json
+{
+  "query_status": "success",
+  "source": "OpenStreetMap",
+  "is_demo_data": false,
+  "locality_name": "Downtown Core",
+  "category": "healthcare",
+  "total_count": 4,
+  "services": [
+    {
+      "osm_id": 1001,
+      "osm_type": "node",
+      "name": "City General Hospital",
+      "category": "healthcare",
+      "sub_type": "hospital",
+      "latitude": 12.9716,
+      "longitude": 77.5946,
+      "tags": {
+        "amenity": "hospital",
+        "name": "City General Hospital",
+        "emergency": "yes"
+      },
+      "source": "OpenStreetMap",
+      "is_demo_data": false,
+      "attribution": "© OpenStreetMap contributors"
+    }
+  ],
+  "attribution": "© OpenStreetMap contributors",
+  "cached": false,
+  "retrieval_timestamp": "2026-10-09T04:20:00Z"
+}
+```
+
+##### `POST /osm/services`
+- **Description:** Body-driven endpoint equivalent to `GET /osm/services` accepting structured `OSMQueryRequest`.
+- **Request Body:**
+```json
+{
+  "locality_name": "Downtown Core",
+  "service_category": "education",
+  "bbox": [12.935, 77.56, 13.015, 77.645]
+}
+```
+- **Response `200 OK`**: Same schema as `GET /osm/services`.
+
+##### `POST /osm/query`
+- **Description:** Queries raw Overpass QL without database ingestion.
+- **Request Body:**
+```json
+{
+  "bbox": [12.935, 77.56, 13.015, 77.645],
+  "category": "healthcare"
+}
+```
+- **Response `200 OK`**: Raw Overpass elements with provenance metadata.
+
+##### `POST /osm/import`
+- **Description:** Imports Overpass features directly into database `services` table. Requires authority role.
+- **Headers:** `Authorization: Bearer <jwt_token>`
+- **Request Body:**
+```json
+{
+  "area_id": 6,
+  "category": "healthcare",
+  "max_count": 50
+}
+```
+- **Response `201 Created`**:
+```json
+{
+  "status": "imported",
+  "imported_count": 4,
+  "area_id": 6,
+  "category": "healthcare",
+  "source": "OpenStreetMap"
+}
+```
+
+##### `GET /osm/cache/stats`
+- **Description:** In-memory SHA256 query cache status and item counts.
+- **Response `200 OK`**:
+```json
+{
+  "cache_entries": 3,
+  "ttl_seconds": 3600,
+  "rate_limit_calls_remaining": 58
+}
+```
+
+##### `GET /osm/provenance/{service_id}`
+- **Description:** Returns immutable audit log data for any imported service facility, showing exact OSM node/way ID, tags, timestamp, and ODbL license.
+- **Response `200 OK`**:
+```json
+{
+  "service_id": 14,
+  "source_name": "OpenStreetMap",
+  "external_id": "1001",
+  "osm_type": "node",
+  "retrieval_timestamp": "2026-10-09T04:20:00Z",
+  "attribution": "© OpenStreetMap contributors",
+  "license": "ODbL 1.0"
+}
+```

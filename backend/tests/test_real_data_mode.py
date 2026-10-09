@@ -554,3 +554,217 @@ class TestServicesModeFilter:
         resp_geojson = client.get("/services/geojson", params={"mode": "demo"})
         assert resp_geojson.status_code == 200
         assert resp_geojson.json()["type"] == "FeatureCollection"
+
+
+class TestNormalizedOSMDataProvider:
+    """
+    Tests Overpass data provider normalization, representative area coordinates,
+    category mapping, missing field integrity, empty/timeout states, and attribution.
+    """
+
+    MOCK_AREAS_AND_POINTS_PAYLOAD = {
+        "version": 0.6,
+        "elements": [
+            # 1. Point feature: Clinic with name
+            {
+                "type": "node",
+                "id": 2001,
+                "lat": 12.9340,
+                "lon": 77.6150,
+                "tags": {
+                    "amenity": "clinic",
+                    "name": "Apex Family Clinic",
+                    "opening_hours": "09:00-18:00",
+                },
+            },
+            # 2. Point feature: Doctors facility
+            {
+                "type": "node",
+                "id": 2002,
+                "lat": 12.9345,
+                "lon": 77.6155,
+                "tags": {
+                    "amenity": "doctors",
+                    "name": "Dr. Rao Orthopedic Care",
+                },
+            },
+            # 3. Point feature: Bus stop WITHOUT name (must not invent name)
+            {
+                "type": "node",
+                "id": 2003,
+                "lat": 12.9350,
+                "lon": 77.6160,
+                "tags": {
+                    "highway": "bus_stop",
+                },
+            },
+            # 4. Area feature (way): School with center coordinates
+            {
+                "type": "way",
+                "id": 2004,
+                "center": {
+                    "lat": 12.9370,
+                    "lon": 77.6180,
+                },
+                "tags": {
+                    "amenity": "school",
+                    "name": "Greenwood High Campus",
+                },
+            },
+            # 5. Area feature (way): College with center coordinates
+            {
+                "type": "way",
+                "id": 2005,
+                "center": {
+                    "lat": 12.9385,
+                    "lon": 77.6195,
+                },
+                "tags": {
+                    "amenity": "college",
+                    "name": "City Engineering College",
+                },
+            },
+            # 6. Area feature (relation): University with center coordinates
+            {
+                "type": "relation",
+                "id": 2006,
+                "center": {
+                    "lat": 12.9400,
+                    "lon": 77.6210,
+                },
+                "tags": {
+                    "amenity": "university",
+                    "name": "State Metropolitan University",
+                },
+            },
+        ],
+    }
+
+    def test_get_normalized_services_demo_mode(self):
+        set_current_mode("demo")
+        resp = client.get("/osm/services", params={"locality_name": "Highlands Valley"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["source"] == "simulated_demo"
+        assert data["is_demo_data"] is True
+        assert data["status"] in ("success", "empty")
+        assert "© OpenStreetMap contributors" in data["attribution"]
+
+        # Validate schema of services
+        for s in data["services"]:
+            assert "osm_id" in s
+            assert "name" in s
+            assert "service_category" in s
+            assert "latitude" in s
+            assert "longitude" in s
+            assert "tags" in s
+            assert "source" in s
+            assert s["is_demo_data"] is True
+
+    def test_get_normalized_services_with_points_and_areas(self, db_session):
+        from app.services.osm_service import fetch_normalized_osm_services
+
+        resp = fetch_normalized_osm_services(
+            db=db_session,
+            locality_name="Test Locality",
+            force_live=True,
+            mock_data=self.MOCK_AREAS_AND_POINTS_PAYLOAD,
+        )
+
+        assert resp.status == "success"
+        assert resp.source == "OpenStreetMap"
+        assert resp.is_demo_data is False
+        assert resp.count == 6
+        assert resp.attribution == "© OpenStreetMap contributors"
+
+        services_by_id = {s.osm_id: s for s in resp.services}
+
+        # 1. Point clinic
+        clinic = services_by_id[2001]
+        assert clinic.name == "Apex Family Clinic"
+        assert clinic.service_category == "healthcare"
+        assert clinic.latitude == 12.9340
+        assert clinic.longitude == 77.6150
+        assert clinic.osm_type == "node"
+        assert clinic.source == "OpenStreetMap"
+        assert clinic.operating_status == "09:00-18:00"
+        assert clinic.capacity is None
+
+        # 2. Point doctors
+        doc = services_by_id[2002]
+        assert doc.name == "Dr. Rao Orthopedic Care"
+        assert doc.service_category == "healthcare"
+        assert doc.latitude == 12.9345
+
+        # 3. Unnamed bus stop: Name MUST NOT be invented!
+        bus = services_by_id[2003]
+        assert bus.name is None  # Integrity: Do not invent missing service names
+        assert bus.service_category == "transport"
+        assert bus.latitude == 12.9350
+        assert bus.longitude == 77.6160
+        assert bus.capacity is None
+        assert bus.operating_status is None
+
+        # 4. Area feature (way school): Representative coordinates extracted from center
+        school = services_by_id[2004]
+        assert school.name == "Greenwood High Campus"
+        assert school.service_category == "education"
+        assert school.latitude == 12.9370
+        assert school.longitude == 77.6180
+        assert school.osm_type == "way"
+
+        # 5. Area feature (way college)
+        college = services_by_id[2005]
+        assert college.name == "City Engineering College"
+        assert college.service_category == "education"
+        assert college.latitude == 12.9385
+        assert college.osm_type == "way"
+
+        # 6. Area feature (relation university)
+        univ = services_by_id[2006]
+        assert univ.name == "State Metropolitan University"
+        assert univ.service_category == "education"
+        assert univ.latitude == 12.9400
+        assert univ.osm_type == "relation"
+
+    def test_get_normalized_services_empty_state(self, db_session):
+        from app.services.osm_service import fetch_normalized_osm_services
+
+        resp = fetch_normalized_osm_services(
+            db=db_session,
+            locality_name="Empty Desert Area",
+            force_live=True,
+            mock_data={"elements": []},
+        )
+        assert resp.status == "empty"
+        assert resp.count == 0
+        assert resp.services == []
+        assert resp.source == "OpenStreetMap"
+        assert resp.is_demo_data is False
+
+    def test_get_normalized_services_timeout_fallback(self, db_session):
+        from app.services.osm_service import fetch_normalized_osm_services
+
+        with patch("app.services.osm_service.fetch_overpass_data", side_effect=RuntimeError("Overpass query timed out after 25s")):
+            # Fallback to demo
+            resp = fetch_normalized_osm_services(
+                db=db_session,
+                locality_name="Timeout Locality",
+                force_live=True,
+                fallback_to_demo=True,
+            )
+            assert resp.status == "timeout"
+            assert resp.is_demo_data is True
+            assert resp.source == "simulated_demo"
+            assert "communication issue" in resp.warning
+
+            # Strict error without fallback
+            with pytest.raises(RuntimeError) as exc_info:
+                fetch_normalized_osm_services(
+                    db=db_session,
+                    locality_name="Timeout Locality",
+                    force_live=True,
+                    fallback_to_demo=False,
+                )
+            assert "Overpass provider failure" in str(exc_info.value)
+

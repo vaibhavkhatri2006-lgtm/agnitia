@@ -84,7 +84,7 @@ def test_model_creation_and_attributes(db_session):
     assert cat.name == "Healthcare"
     assert cat.icon == "hospital"
 
-    area = db_session.query(GeographicArea).filter_by(name="Downtown Core").first()
+    area = db_session.query(GeographicArea).filter(GeographicArea.name.in_(["Rajwada", "Downtown Core"])).first()
     assert area is not None
     assert area.area_type == "neighbourhood"
     assert area.population == 25000
@@ -92,19 +92,19 @@ def test_model_creation_and_attributes(db_session):
 
 def test_foreign_key_and_relationships(db_session):
     """Verify relationship traversal and foreign key integrity."""
-    service = db_session.query(Service).filter_by(name="Central Metro Hospital").first()
+    service = db_session.query(Service).filter(Service.name.in_(["MY Hospital Indore", "Central Metro Hospital"])).first()
     assert service is not None
     assert service.category.code == "healthcare"
-    assert service.area.name == "Downtown Core"
+    assert service.area.name in ["Rajwada", "Downtown Core"]
     assert service.capacity_record is not None
     assert service.capacity_record.capacity == 500
     assert service.capacity_record.current_load == 380
 
     # Area hierarchy parent/children relationship
-    downtown = db_session.query(GeographicArea).filter_by(name="Downtown Core").first()
+    downtown = db_session.query(GeographicArea).filter(GeographicArea.name.in_(["Rajwada", "Downtown Core"])).first()
     assert downtown.parent is not None
-    assert downtown.parent.name == "District 1 - Central Ward"
-    assert any(child.name == "Downtown Core" for child in downtown.parent.children)
+    assert downtown.parent.name in ["Zone 1 - Rajwada Central", "District 1 - Central Ward"]
+    assert any(child.name in ["Rajwada", "Downtown Core"] for child in downtown.parent.children)
 
     # Report verifications relationship
     report = db_session.query(CommunityReport).filter_by(severity="high").first()
@@ -212,7 +212,7 @@ def test_sample_queries(db_session):
     )
     assert len(transport_services) == 3
     transit_names = [s.name for s in transport_services]
-    assert "South Hillside Bus Hub" in transit_names
+    assert any(name in transit_names for name in ["Bhanwarkuan BRTS Bus Hub", "South Hillside Bus Hub"])
 
     # Query 2: Find services with constrained or overloaded capacity
     stressed_services = (
@@ -236,9 +236,9 @@ def test_sample_queries(db_session):
         if not has_hc:
             underserved_neighbourhoods.append(neigh.name)
 
-    # Highlands Valley and South Hillside should naturally lack direct clinics
-    assert "Highlands Valley" in underserved_neighbourhoods
-    assert "South Hillside" in underserved_neighbourhoods
+    # Highlands Valley / Vijay Nagar and South Hillside / Bhanwarkuan naturally lack direct clinics
+    assert any(name in underserved_neighbourhoods for name in ["Vijay Nagar", "Highlands Valley"])
+    assert any(name in underserved_neighbourhoods for name in ["Bhanwarkuan", "South Hillside"])
 
     # Query 4: Find critical community reports
     critical_reports = (

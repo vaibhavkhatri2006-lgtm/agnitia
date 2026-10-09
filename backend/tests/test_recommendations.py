@@ -241,9 +241,9 @@ def test_candidate_ranking(db):
     for i in range(len(ranked) - 1):
         assert ranked[i].recommendation_score >= ranked[i + 1].recommendation_score
 
-    # Highlands Valley (Pop 22,000, 0 healthcare) must be top-ranked
+    # Highlands Valley / Vijay Nagar (Pop 22,000, 0 healthcare) must be top-ranked
     top = ranked[0]
-    assert top.area_name == "Highlands Valley"
+    assert top.area_name in ["Vijay Nagar", "Highlands Valley"]
     assert top.rank == 1
     assert top.recommendation_score >= 70.0
 

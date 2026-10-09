@@ -1,51 +1,107 @@
 import React from 'react';
-import { Intervention } from '../../types/models';
+import { DashboardRecommendation } from '../../services/dashboardService';
+import { Sparkles, MapPin, Users, TrendingUp, ShieldCheck } from 'lucide-react';
 
 interface RecommendationPanelProps {
-  interventions: Intervention[];
+  recommendations: DashboardRecommendation[];
   loading?: boolean;
 }
 
-export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ interventions, loading }) => {
+export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ recommendations, loading }) => {
   if (loading) {
-    return <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-200 animate-pulse h-64"></div>;
+    return (
+      <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 animate-pulse space-y-4">
+        <div className="h-6 bg-slate-200 rounded w-1/3"></div>
+        <div className="h-20 bg-slate-100 rounded-xl"></div>
+        <div className="h-20 bg-slate-100 rounded-xl"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center border border-blue-100">
-          <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+    <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-indigo-600" />
+            AI Priority Recommendations
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Algorithmic infrastructure allocations from Stage 4B recommendation engine.
+          </p>
         </div>
-        <h3 className="text-xl font-bold text-slate-900 tracking-tight">AI Recommendations & Investment</h3>
+        <span className="text-xs font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-200">
+          Ranked Interventions
+        </span>
       </div>
-      
-      {interventions.length === 0 ? (
+
+      {recommendations.length === 0 ? (
         <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-          <p className="text-sm font-medium text-slate-500">No recommendations available for this scale.</p>
+          <p className="text-sm font-medium text-slate-500">No candidate interventions available for this scale.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {interventions.map((intervention, index) => (
-            <div key={intervention.id} className="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 border border-slate-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-200 bg-white">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 group-hover:bg-blue-50 text-slate-600 group-hover:text-blue-700 font-bold flex items-center justify-center shrink-0 border border-slate-200 group-hover:border-blue-200 transition-colors">
-                  {index + 1}
+        <div className="space-y-3.5">
+          {recommendations.map((rec) => (
+            <div
+              key={rec.candidate_id}
+              className="group p-4 border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all duration-200 bg-white"
+            >
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 font-extrabold flex items-center justify-center shrink-0 border border-indigo-200 text-xs shadow-2xs">
+                    #{rec.rank}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-slate-900 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                        {rec.area_name}
+                      </span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                        {rec.service_type}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      Strategy: <span className="font-medium text-slate-700">{rec.strategy}</span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-base font-semibold text-slate-900">{intervention.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                  <p className="text-sm font-medium text-slate-500 mt-0.5">Est. Cost: <span className="text-slate-700">${intervention.cost.toLocaleString()}</span></p>
-                </div>
-              </div>
-              <div className="mt-4 sm:mt-0 ml-14 sm:ml-0 flex flex-wrap gap-2">
-                {intervention.expectedBenefit.map((benefit) => (
-                  <span key={benefit.id} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                    +{benefit.value}{benefit.label === 'pts' ? ' pts' : benefit.label} {benefit.name}
+
+                {/* Expected Access Score Gain & Priority Metric */}
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                    +{rec.expected_gain_pts} pts Access Gain
                   </span>
-                ))}
+                </div>
               </div>
+
+              {/* Details & Population Reached */}
+              <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 pt-2.5 border-t border-slate-100 gap-2">
+                <div className="flex items-center gap-1.5 text-slate-700">
+                  <Users className="w-3.5 h-3.5 text-slate-400" />
+                  <span>
+                    Population Reached:{' '}
+                    <strong className="text-slate-900 font-semibold">
+                      {rec.population.toLocaleString()}
+                    </strong>{' '}
+                    residents
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Score: <strong className="text-slate-800">{rec.recommendation_score.toFixed(1)}/100</strong></span>
+                </div>
+              </div>
+
+              {/* First reason if available */}
+              {rec.reasons && rec.reasons.length > 0 && (
+                <div className="mt-2 text-[11px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="font-semibold text-slate-700">Primary Rationale: </span>
+                  {rec.reasons[0]}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -53,4 +109,3 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({ interv
     </div>
   );
 };
-

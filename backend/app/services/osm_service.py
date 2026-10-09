@@ -24,7 +24,14 @@ from app.models import (
     AuditLog,
     DataSource,
 )
-from app.schemas.real_data import OSMImportRequest, OSMImportSummary, OSMImportResponse
+from app.schemas.real_data import (
+    OSMImportRequest,
+    OSMImportSummary,
+    OSMImportResponse,
+    OSMNormalizedService,
+    OSMQueryResponse,
+)
+from app.services.mode_service import is_demo_mode
 
 logger = logging.getLogger(__name__)
 
@@ -583,3 +590,219 @@ def get_service_provenance(db: Session, service_id: int) -> Dict[str, Any]:
             "is_demo_data": is_demo,
         },
     }
+
+
+def fetch_normalized_osm_services(
+    db: Session,
+    locality_name: Optional[str] = None,
+    area_id: Optional[int] = None,
+    bbox: Optional[List[float]] = None,
+    center_lat: Optional[float] = None,
+    center_lon: Optional[float] = None,
+    radius_meters: float = 2000.0,
+    categories: Optional[List[str]] = None,
+    fallback_to_demo: bool = True,
+    force_live: bool = False,
+    mock_data: Optional[Dict[str, Any]] = None,
+) -> OSMQueryResponse:
+    """
+    Overpass Data Provider for OpenStreetMap civic infrastructure.
+    Retrieves hospitals, clinics, doctors, schools, colleges, universities, bus stops,
+    and civic amenities for the target locality or bounding box.
+
+    Features:
+    1. Normalizes results to strict schema: osm_id, name, service_category, latitude,
+       longitude, tags, source.
+    2. Correctly handles both point features (nodes) and area features (ways/relations)
+       using representative centroid coordinates.
+    3. Respects DEMO_MODE by providing deterministic local data when Overpass is unavailable
+       or when demo mode is active.
+    4. Distinguishes actual OSM data from synthetic demo data.
+    5. Does NOT invent missing service names, operating status, capacity, or population.
+    6. Returns structured states: 'success', 'empty', 'timeout', or 'error'.
+    """
+    # 1. Resolve locality / geographic area
+    area: Optional[GeographicArea] = None
+    if area_id:
+        area = db.query(GeographicArea).filter(GeographicArea.id == area_id).first()
+    elif locality_name:
+        area = db.query(GeographicArea).filter(GeographicArea.name.ilike(locality_name.strip())).first()
+
+    resolved_locality_name = locality_name or (area.name if area else "Target Locality")
+
+    if area and not bbox and center_lat is None:
+        from app.analytics.distance import extract_centroid_lat_lon
+        if area.geometry:
+            try:
+                center_lat, center_lon = extract_centroid_lat_lon(area.geometry)
+            except Exception:
+                center_lat, center_lon = 12.9716, 77.5946
+        else:
+            center_lat, center_lon = 12.9716, 77.5946
+
+    if center_lat is None and not bbox:
+        if locality_name and any(k in locality_name.lower() for k in ["indore", "rajwada", "vijay nagar", "palasia", "bhawar kuan", "annapurna"]):
+            center_lat, center_lon = 22.7196, 75.8577
+        elif locality_name and any(k in locality_name.lower() for k in ["bengaluru", "bangalore", "metro city"]):
+            center_lat, center_lon = 12.9716, 77.5946
+        else:
+            center_lat, center_lon = 22.7196, 75.8577
+
+    # 2. Check DEMO_MODE
+    if is_demo_mode() and not force_live and mock_data is None:
+        return _build_deterministic_demo_response(
+            db, area, resolved_locality_name, categories
+        )
+
+    # 3. Live or Mock Overpass API Execution
+    query = build_overpass_query(
+        categories=categories,
+        bbox=bbox,
+        center_lat=center_lat,
+        center_lon=center_lon,
+        radius_meters=radius_meters,
+        timeout_seconds=getattr(settings, "OVERPASS_TIMEOUT_SECONDS", 25),
+    )
+
+    try:
+        data, was_cached = fetch_overpass_data(query, mock_data=mock_data)
+    except Exception as exc:
+        logger.warning("Overpass API query failed: %s", exc)
+        if fallback_to_demo:
+            exc_str = str(exc).lower()
+            status_type = "timeout" if ("timeout" in exc_str or "timed out" in exc_str) else "error"
+            demo_resp = _build_deterministic_demo_response(
+                db, area, resolved_locality_name, categories
+            )
+            demo_resp.status = status_type
+            demo_resp.warning = (
+                f"OpenStreetMap Overpass API communication issue: {exc}. "
+                "Displaying deterministic local demo data."
+            )
+            return demo_resp
+        raise RuntimeError(f"Overpass provider failure: {exc}") from exc
+
+    # 4. Parse & Normalize Elements
+    elements = data.get("elements", [])
+    normalized_services: List[OSMNormalizedService] = []
+    seen_ids = set()
+
+    for elem in elements:
+        raw_lat, raw_lon = extract_element_coords(elem)
+        if not validate_coordinates(raw_lat, raw_lon):
+            continue
+
+        lat = float(raw_lat)
+        lon = float(raw_lon)
+
+        tags = elem.get("tags", {})
+        cat_code = determine_category_code(tags)
+        if not cat_code:
+            continue
+
+        if categories:
+            cat_filter = [c.lower() for c in categories]
+            if cat_code not in cat_filter:
+                continue
+
+        elem_id = elem.get("id")
+        if not elem_id or elem_id in seen_ids:
+            continue
+        seen_ids.add(elem_id)
+
+        # Do NOT invent missing service names, operating status, or capacity!
+        reported_name = tags.get("name") or tags.get("operator")
+        elem_type = elem.get("type", "node")
+        reported_status = tags.get("opening_hours") or tags.get("operational_status")
+        reported_capacity = None
+        if "capacity" in tags:
+            try:
+                reported_capacity = int(tags["capacity"])
+            except (ValueError, TypeError):
+                reported_capacity = None
+
+        normalized_services.append(
+            OSMNormalizedService(
+                osm_id=elem_id,
+                name=reported_name,
+                service_category=cat_code,
+                latitude=lat,
+                longitude=lon,
+                tags=tags,
+                source="OpenStreetMap",
+                osm_type=elem_type,
+                operating_status=reported_status,
+                capacity=reported_capacity,
+                is_demo_data=False,
+            )
+        )
+
+    status_str = "success" if normalized_services else "empty"
+    return OSMQueryResponse(
+        status=status_str,
+        source="OpenStreetMap",
+        is_demo_data=False,
+        locality_name=resolved_locality_name,
+        count=len(normalized_services),
+        services=normalized_services,
+        cached=was_cached,
+        attribution="© OpenStreetMap contributors",
+        warning=None if normalized_services else "No matching facilities found in OpenStreetMap for the specified criteria.",
+        query_timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+def _build_deterministic_demo_response(
+    db: Session,
+    area: Optional[GeographicArea],
+    locality_name: str,
+    categories: Optional[List[str]],
+) -> OSMQueryResponse:
+    """Builds a deterministic local demo fallback response when Overpass is unavailable or in DEMO_MODE."""
+    query = db.query(Service).filter(Service.source_type == "simulated_demo")
+    if area:
+        area_services = query.filter(Service.area_id == area.id).all()
+        demo_svcs = area_services if area_services else query.all()
+    else:
+        demo_svcs = query.all()
+
+    if categories:
+        cat_filter = [c.lower() for c in categories]
+        demo_svcs = [
+            s for s in demo_svcs
+            if s.category and s.category.code in cat_filter
+        ]
+
+    services_out: List[OSMNormalizedService] = []
+    for s in demo_svcs:
+        cat_code = s.category.code if s.category else "healthcare"
+        cap = s.capacity_record.capacity if s.capacity_record else None
+        services_out.append(
+            OSMNormalizedService(
+                osm_id=s.id,
+                name=s.name,
+                service_category=cat_code,
+                latitude=s.latitude,
+                longitude=s.longitude,
+                tags={"source": "simulated_demo", "synthetic": "true"},
+                source="simulated_demo",
+                osm_type="node",
+                operating_status=s.status,
+                capacity=cap,
+                is_demo_data=True,
+            )
+        )
+
+    return OSMQueryResponse(
+        status="success" if services_out else "empty",
+        source="simulated_demo",
+        is_demo_data=True,
+        locality_name=locality_name,
+        count=len(services_out),
+        services=services_out,
+        cached=False,
+        attribution="© OpenStreetMap contributors (Base Map) | CivicPulse Deterministic Demo Dataset",
+        warning="Operating with deterministic local demo data.",
+        query_timestamp=datetime.now(timezone.utc).isoformat(),
+    )
+

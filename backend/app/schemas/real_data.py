@@ -95,3 +95,41 @@ class ServiceProvenanceResponse(BaseModel):
     confidence_score: float
     license: str
     provenance: Dict[str, Any]
+
+
+class OSMNormalizedService(BaseModel):
+    """
+    Normalized OpenStreetMap civic service facility record.
+    Conforms strictly to required schema:
+    OSM ID, name, service category, latitude, longitude, tags, and source.
+    Does NOT invent missing service names, operating status, capacity, or population.
+    """
+    osm_id: int = Field(..., description="OpenStreetMap element identifier or deterministic demo ID")
+    name: Optional[str] = Field(None, description="Reported facility name from OSM, or None if unnamed")
+    service_category: str = Field(..., description="Normalized category: healthcare, education, transport, water, market")
+    latitude: float = Field(..., description="Latitude coordinate (point or representative center of area)")
+    longitude: float = Field(..., description="Longitude coordinate (point or representative center of area)")
+    tags: Dict[str, str] = Field(default_factory=dict, description="Raw OpenStreetMap tags")
+    source: str = Field("OpenStreetMap", description="Data source attribution: 'OpenStreetMap' or 'simulated_demo'")
+    osm_type: Optional[str] = Field("node", description="OSM element type: node, way, relation")
+    operating_status: Optional[str] = Field(None, description="Operating status if reported in tags, else None")
+    capacity: Optional[int] = Field(None, description="Capacity if reported in tags, else None")
+    is_demo_data: bool = Field(False, description="Distinguishes actual OSM data from synthetic demo data")
+
+
+class OSMQueryResponse(BaseModel):
+    """
+    Standardized response from the Overpass data provider.
+    Supports loading, empty, timeout, and error states with provenance and attribution.
+    """
+    status: str = Field(..., description="'success', 'empty', 'timeout', or 'error'")
+    source: str = Field(..., description="'OpenStreetMap' or 'simulated_demo'")
+    is_demo_data: bool = Field(False, description="Distinguishes actual OSM data from synthetic demo data")
+    locality_name: Optional[str] = Field(None, description="Locality or area queried")
+    count: int = Field(..., description="Number of facilities returned")
+    services: List[OSMNormalizedService] = Field(default_factory=list, description="Normalized service facilities")
+    cached: bool = Field(False, description="Whether query was served from cache")
+    attribution: str = Field("© OpenStreetMap contributors", description="OpenStreetMap legal attribution")
+    warning: Optional[str] = Field(None, description="Warning message (e.g. if fallback was activated)")
+    query_timestamp: Optional[str] = Field(None, description="ISO timestamp of query execution")
+

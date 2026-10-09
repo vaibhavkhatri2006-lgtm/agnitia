@@ -1,0 +1,1098 @@
+import os
+import subprocess
+import sys
+
+def build_html_content() -> str:
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CivicPulse — Project Compendium & Judges' Technical Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.6cm 1.4cm 1.8cm 1.4cm;
+      @bottom-right {
+        content: "Page " counter(page);
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+      @bottom-left {
+        content: "CivicPulse — Confidential Judges' Technical Compendium";
+        font-family: 'Inter', sans-serif;
+        font-size: 8pt;
+        color: #64748b;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Page Breaks */
+    .page-break {
+      page-break-before: always;
+    }
+
+    .avoid-break {
+      page-break-inside: avoid;
+    }
+
+    /* Headings */
+    h1, h2, h3, h4 {
+      color: #0f172a;
+      font-weight: 700;
+      margin-top: 1.2em;
+      margin-bottom: 0.5em;
+      letter-spacing: -0.02em;
+    }
+
+    h1 {
+      font-size: 22pt;
+      line-height: 1.15;
+      color: #1e3a8a;
+      margin-top: 0;
+    }
+
+    h2 {
+      font-size: 13.5pt;
+      color: #1e40af;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-top: 1.4em;
+    }
+
+    h3 {
+      font-size: 11pt;
+      color: #0f172a;
+      margin-top: 1em;
+    }
+
+    p {
+      margin: 0.4em 0 0.8em 0;
+      text-align: justify;
+    }
+
+    /* Cover Page */
+    .cover-container {
+      padding-top: 2.5cm;
+      padding-bottom: 2cm;
+      text-align: center;
+      page-break-after: always;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 8.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      border: 1px solid #bfdbfe;
+      margin-bottom: 20px;
+    }
+
+    .cover-title {
+      font-size: 32pt;
+      font-weight: 900;
+      color: #0f2d59;
+      line-height: 1.1;
+      margin-bottom: 12px;
+      letter-spacing: -0.03em;
+    }
+
+    .cover-subtitle {
+      font-size: 14pt;
+      color: #475569;
+      max-width: 600px;
+      margin: 0 auto 30px auto;
+      line-height: 1.4;
+    }
+
+    .cover-divider {
+      width: 80px;
+      height: 4px;
+      background: linear-gradient(90deg, #2563eb, #38bdf8);
+      margin: 25px auto;
+      border-radius: 2px;
+    }
+
+    .cover-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      max-width: 650px;
+      margin: 40px auto 0 auto;
+      text-align: left;
+    }
+
+    .meta-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+
+    .meta-box .label {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .meta-box .value {
+      font-size: 9.5pt;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* Executive Callout Box */
+    .callout {
+      background: #f0fdf4;
+      border-left: 4px solid #16a34a;
+      padding: 10px 14px;
+      margin: 12px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 9pt;
+    }
+
+    .callout-blue {
+      background: #eff6ff;
+      border-left: 4px solid #2563eb;
+    }
+
+    .callout-amber {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .callout-purple {
+      background: #faf5ff;
+      border-left: 4px solid #9333ea;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 16px 0;
+      font-size: 8.5pt;
+    }
+
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+    .badge-orange { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
+    .badge-red { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .badge-blue { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
+
+    /* Code Blocks */
+    pre, code {
+      font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+      font-size: 8pt;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin: 8px 0 12px 0;
+      line-height: 1.35;
+    }
+
+    code.inline {
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+      font-size: 8pt;
+    }
+
+    /* Math Formulas */
+    .formula-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 10px 0;
+      text-align: center;
+      font-family: "Georgia", serif;
+      font-size: 10pt;
+      font-style: italic;
+      color: #1e3a8a;
+    }
+
+    /* Two column grid */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .card h4 {
+      margin-top: 0;
+      margin-bottom: 4px;
+      font-size: 9.5pt;
+      color: #1e40af;
+    }
+
+    /* Steps */
+    .step-item {
+      display: flex;
+      margin-bottom: 8px;
+    }
+
+    .step-num {
+      width: 22px;
+      height: 22px;
+      background: #2563eb;
+      color: #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8pt;
+      font-weight: 700;
+      margin-right: 8px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    ul, ol {
+      margin: 0.4em 0 0.8em 0;
+      padding-left: 18px;
+    }
+
+    li {
+      margin-bottom: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== COVER PAGE ==================== -->
+  <div class="cover-container">
+    <div class="cover-badge">Official Hackathon Compendium & Technical Defense</div>
+    <div class="cover-title">CivicPulse</div>
+    <div class="cover-subtitle">
+      AI-Powered Spatial Planning, Multi-Modal Accessibility Analytics & Urban Infrastructure Resilience Platform
+    </div>
+
+    <div class="cover-divider"></div>
+
+    <p style="text-align: center; max-width: 580px; margin: 0 auto; color: #475569; font-size: 10pt;">
+      A complete, production-grade guide covering system architecture, mathematical formulas, What-If simulation mechanics, live demo scripts, and judges' technical defense.
+    </p>
+
+    <div class="cover-meta-grid">
+      <div class="meta-box">
+        <div class="label">Project Version</div>
+        <div class="value">v0.5.0 (Stage 12 Complete)</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Automated Tests</div>
+        <div class="value">157 / 157 Passing (100%)</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Frontend Bundle</div>
+        <div class="value">React 19 + Leaflet + Vite</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Core Backend</div>
+        <div class="value">FastAPI + Python 3.12</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Geospatial Engine</div>
+        <div class="value">Shapely + PostGIS / SQLite</div>
+      </div>
+      <div class="meta-box">
+        <div class="label">Map Tiles & Layer</div>
+        <div class="value">OpenStreetMap (Zero API Cost)</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 50px; font-size: 8.5pt; color: #94a3b8;">
+      Designed & Built for Municipal Authorities, Urban Planners, and Engaged Communities.
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 1: EXECUTIVE SUMMARY & PROBLEM ==================== -->
+  <h2>1. Executive Summary & Problem Statement</h2>
+
+  <div class="callout callout-blue">
+    <strong>The Core Problem:</strong> In rapidly growing urban centers, essential public services—clinics, schools, clean water points, transit stops, and food markets—are distributed inequitably. Vulnerable neighbourhoods become <strong>service deserts</strong> where residents travel over 45 minutes for basic healthcare. Meanwhile, municipal authorities allocate multi-million dollar infrastructure budgets using subjective guesswork, political intuition, or static census spreadsheets, while citizen failure reports remain trapped in disconnected silos.
+  </div>
+
+  <p>
+    <strong>CivicPulse</strong> is an open-standard, mathematically grounded urban spatial intelligence platform that bridges top-down municipal planning with bottom-up citizen reality. Rather than relying on opaque black-box AI models that hallucinate allocations, CivicPulse provides:
+  </p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>1. Deterministic Multi-Criteria Analytics</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Synthesizes travel time, facility throughput load, transport connectivity, and demographic vulnerability into reproducible 0–100 accessibility and service desert scores with transparent mathematical formulas.
+      </p>
+    </div>
+    <div class="card">
+      <h4>2. Explainable Candidate Allocation</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Identifies optimal intervention locations using geometric centroid, population density, and gap-perimeter strategies. Every recommendation includes human-auditable justification factors.
+      </p>
+    </div>
+    <div class="card">
+      <h4>3. In-Memory What-If Simulation Lab</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Enables planners to simulate building or upgrading facilities before committing taxpayer capital. Calculates accessibility gains and population relieved in-memory with <strong>zero database writes</strong>.
+      </p>
+    </div>
+    <div class="card">
+      <h4>4. Verified Civic Trust Hierarchy</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Measures the <em>Reality Gap</em> by tracking real-world infrastructure failures submitted by citizens through an immutable, role-guarded verification pipeline from community review to official confirmation.
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 2: SYSTEM ARCHITECTURE ==================== -->
+  <h2>2. System Architecture & Tech Stack</h2>
+
+  <p>
+    CivicPulse is built with a strictly decoupled, production-ready micro-architecture adhering to clean architecture patterns:
+  </p>
+
+  <pre>
+┌───────────────────────────────────────────────────────────────────────────┐
+│                       PRESENTATION LAYER (Frontend)                       │
+│  React 19 • TypeScript • Vite • Tailwind CSS v4 • Lucide Icons • Recharts │
+│  Leaflet Map Container + OpenStreetMap Tiles (Free, Zero API Key Required)│
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                      │ REST / JSON & GeoJSON (RFC 7946)
+                                      ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                       APPLICATION ENGINE (FastAPI)                        │
+│  ├── Auth & RBAC (Citizen, Community, Authority, Admin - HS256 JWT)       │
+│  ├── Geospatial & Analytics Engine (Haversine Detour, Capacity Ratios)   │
+│  ├── Spatial Decision Engine (Centroid, Population Density, Perimeter)   │
+│  ├── Recommendation Scoring Engine (7-Factor Normalized Weights)          │
+│  ├── In-Memory What-If Simulator (Ephemeral ORM, Zero DB Writes)          │
+│  ├── Systemic Resilience Engine (Outage Modeling & Single Point of Failure│
+│  ├── Multi-Scale Hierarchy Service (Local, Neighbourhood, Ward, City)     │
+│  ├── Community Trust & Moderation (Multi-Tier Verification & Audit Logs)  │
+│  └── OpenStreetMap Ingestion (Overpass QL, 15m Deduplication, Caching)    │
+└─────────────────────────────────────┬─────────────────────────────────────┘
+                                      │ SQLAlchemy 2.0 ORM / GeoAlchemy2
+                                      ▼
+┌───────────────────────────────────────────────────────────────────────────┐
+│                          DATA PERSISTENCE LAYER                           │
+│  SQLite + Shapely (Local Dev & Testing) / PostgreSQL + PostGIS (Docker)   │
+│  SRID 4326 Geometries: Point, Polygon, MultiPolygon • Alembic Migrations  │
+└───────────────────────────────────────────────────────────────────────────┘
+  </pre>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th style="width: 22%;">Component</th>
+        <th style="width: 28%;">Technology</th>
+        <th>Architectural Rationale</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Backend Framework</strong></td>
+        <td>Python 3.12, FastAPI, Pydantic v2</td>
+        <td>High-concurrency async ASGI server, automated OpenAPI 3.1 documentation, strict data contract validation.</td>
+      </tr>
+      <tr>
+        <td><strong>Spatial ORM & Geometry</strong></td>
+        <td>SQLAlchemy 2.0, GeoAlchemy2, Shapely</td>
+        <td>Standardized WKT and GeoJSON geometry handling (SRID 4326), robust polygon containment and centroid calculations.</td>
+      </tr>
+      <tr>
+        <td><strong>Database Engine</strong></td>
+        <td>SQLite (local) / PostgreSQL + PostGIS (prod)</td>
+        <td>Zero-setup lightweight deterministic local execution; transparent production scaling via PostGIS spatial indexes.</td>
+      </tr>
+      <tr>
+        <td><strong>Frontend Web App</strong></td>
+        <td>React 19, TypeScript, Vite, Tailwind v4</td>
+        <td>Sub-second build times (1.5s), strictly typed data models, reactive state management, modern civic-tech UI design.</td>
+      </tr>
+      <tr>
+        <td><strong>Interactive Map</strong></td>
+        <td>React-Leaflet, Leaflet 1.9, OpenStreetMap</td>
+        <td>100% free, key-free tile rendering adhering to OSM usage policies, custom SVG divIcon markers, GeoJSON choropleth layers.</td>
+      </tr>
+      <tr>
+        <td><strong>Security & Auth</strong></td>
+        <td>OAuth2 Password Bearer, JWT, bcrypt (12 rounds)</td>
+        <td>Stateless authentication with server-side Role-Based Access Control (RBAC) enforced on sensitive mutation endpoints.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== SECTION 3: CORE ANALYTICAL ENGINES ==================== -->
+  <div class="page-break"></div>
+  <h2>3. Core Geospatial & Analytical Engines</h2>
+
+  <p>
+    Unlike simplistic GIS applications that merely draw 500-meter radius circles around facilities, CivicPulse computes a multi-dimensional accessibility score grounded in urban reality.
+  </p>
+
+  <h3>A. Composite Accessibility Score Formula</h3>
+  <div class="formula-box">
+    Accessibility Score = 0.30 &times; S<sub>travel</sub> + 0.20 &times; S<sub>avail</sub> + 0.20 &times; S<sub>capacity</sub> + 0.15 &times; S<sub>conn</sub> + 0.15 &times; S<sub>equity</sub>
+  </div>
+  <div class="formula-box" style="font-size: 9pt; margin-top: -6px;">
+    Gap Score = 100.0 &minus; Accessibility Score
+  </div>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th>Factor (Weight)</th>
+        <th>Description & Implementation</th>
+        <th>Mathematical Mechanics</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Travel Time (30%)</strong></td>
+        <td>Measures time required to reach the nearest facility under urban conditions.</td>
+        <td>Haversine great-circle distance &times; 1.30 urban street grid detour coefficient. Walking speed: 4.5 km/h; Transit speed: 20 km/h. Decays from 100 (instant access) to 0 (&gt;45 mins).</td>
+      </tr>
+      <tr>
+        <td><strong>Service Availability (20%)</strong></td>
+        <td>Operational condition of the target infrastructure facility.</td>
+        <td>Categorical weighting: <code>operational</code> = 100, <code>limited</code> = 60, <code>degraded</code> = 50, <code>temporarily_unavailable</code> = 20, <code>closed</code> = 0.</td>
+      </tr>
+      <tr>
+        <td><strong>Capacity Pressure (20%)</strong></td>
+        <td>Demand vs available throughput throughput ratio (D/C).</td>
+        <td>Calculates demand from neighbourhood population vs facility throughput. Ratios &gt; 1.5 indicate critical overcrowding; ratios &lt; 0.7 indicate comfortable capacity.</td>
+      </tr>
+      <tr>
+        <td><strong>Transport Connectivity (15%)</strong></td>
+        <td>Proximity to multimodal transit nodes (metro, bus terminals).</td>
+        <td>Evaluates whether the facility is reachable via public transit, scoring 100 if within 400m of a transit stop.</td>
+      </tr>
+      <tr>
+        <td><strong>Demographic Equity (15%)</strong></td>
+        <td>Prioritization of socio-economically vulnerable areas.</td>
+        <td>Derived from fine-grained population cells factoring elderly ratio, child dependency, and vulnerability indexes.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>B. Service Desert Classification</h3>
+  <p>Every administrative area is classified deterministically based on its composite accessibility score:</p>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th>Score Range</th>
+        <th>Classification</th>
+        <th>Map Color</th>
+        <th>Planning Implications</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>80 – 100</strong></td>
+        <td><span class="badge badge-green">Well Served</span></td>
+        <td>Emerald Green</td>
+        <td>Optimal coverage; low travel times; adequate facility capacity. Maintenance only.</td>
+      </tr>
+      <tr>
+        <td><strong>60 – 79</strong></td>
+        <td><span class="badge badge-yellow">Adequate</span></td>
+        <td>Yellow</td>
+        <td>Acceptable baseline access, but vulnerable to seasonal demand spikes or facility degradation.</td>
+      </tr>
+      <tr>
+        <td><strong>40 – 59</strong></td>
+        <td><span class="badge badge-orange">At Risk / Underserved</span></td>
+        <td>Amber / Orange</td>
+        <td>Emerging service deficit; excessive travel times (&gt;25 mins) or capacity pressure &gt;100%.</td>
+      </tr>
+      <tr>
+        <td><strong>20 – 39</strong></td>
+        <td><span class="badge badge-orange">Underserved</span></td>
+        <td>Deep Orange</td>
+        <td>Acute infrastructure deficit; high equity vulnerability; priority candidate for municipal capital.</td>
+      </tr>
+      <tr>
+        <td><strong>0 – 19</strong></td>
+        <td><span class="badge badge-red">Critical Desert</span></td>
+        <td>Crimson Red</td>
+        <td>Severe civic deprivation; zero operational facilities within standard catchment radius.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>C. Pluggable Routing Engine</h3>
+  <p>
+    CivicPulse decouples travel estimation using a pluggable <code>RoutingProvider</code> architecture:
+  </p>
+  <ul>
+    <li><strong>Deterministic Urban Detour Model (Default / Offline)</strong>: Scales great-circle distance by a calibrated $1.30\times$ Manhattan grid coefficient. Executes in sub-milliseconds without incurring external API costs.</li>
+    <li><strong>OSRM (Open Source Routing Machine)</strong>: When <code>USE_OSRM=True</code>, queries road network graph servers. If OSRM times out or is unreachable, the system automatically falls back to the deterministic model with an audit notice.</li>
+  </ul>
+
+  <!-- ==================== SECTION 4: SPATIAL DECISION & RECOMMENDATION ENGINE ==================== -->
+  <div class="page-break"></div>
+  <h2>4. Spatial Decision Engine & Recommendation System</h2>
+
+  <p>
+    When a locality is flagged as a service desert, the planner needs to know: <em>"Where exactly should we intervene, and why?"</em> CivicPulse answers this algorithmically.
+  </p>
+
+  <h3>A. Algorithmic Candidate Location Allocation</h3>
+  <p>
+    Rather than requiring planners to manually click random map coordinates, the <code>CandidateGenerator</code> generates candidate sites using three complementary geometric strategies:
+  </p>
+
+  <div class="grid-2 avoid-break">
+    <div class="card">
+      <h4>1. Geometric Centroid</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Computes the interior mathematical centroid of the underserved neighbourhood polygon using Shapely. Represents the geometric center of gravity.
+      </p>
+    </div>
+    <div class="card">
+      <h4>2. Population Density Node</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Locates the centroid of the population cell with the highest resident density. Maximizes walking-catchment population within 15 minutes.
+      </p>
+    </div>
+    <div class="card">
+      <h4>3. Gap Perimeter Node</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        Identifies the interior coordinate furthest from all existing facilities in the category, eliminating geographic blind spots.
+      </p>
+    </div>
+    <div class="card">
+      <h4>Validation & Deduplication</h4>
+      <p style="font-size: 8.5pt; margin: 0;">
+        All candidates are verified for strict geometric containment inside the boundary (<code>polygon.contains(pt)</code>) and spatially deduplicated within an 11-meter tolerance.
+      </p>
+    </div>
+  </div>
+
+  <h3>B. 7-Factor Recommendation Scoring Formula</h3>
+  <p>
+    Every valid candidate location is evaluated across seven normalized criteria (0 to 100), producing an auditable priority ranking:
+  </p>
+
+  <div class="formula-box">
+    Score = 0.30 &times; Gap + 0.25 &times; Pop + 0.15 &times; Travel + 0.10 &times; Capacity + 0.10 &times; Equity + 0.05 &times; Connectivity + 0.05 &times; Confidence
+  </div>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th>Factor</th>
+        <th>Weight</th>
+        <th>Analytical Rationale</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Gap Severity</strong></td>
+        <td>30%</td>
+        <td>Prioritizes interventions in localities with the highest baseline deficit.</td>
+      </tr>
+      <tr>
+        <td><strong>Population Affected</strong></td>
+        <td>25%</td>
+        <td>Scales civic ROI by the absolute number of residents benefiting from the new site.</td>
+      </tr>
+      <tr>
+        <td><strong>Travel-Time Need</strong></td>
+        <td>15%</td>
+        <td>Targets areas with excessive existing commute times to essential amenities.</td>
+      </tr>
+      <tr>
+        <td><strong>Capacity Pressure</strong></td>
+        <td>10%</td>
+        <td>Relieves overburdened neighboring clinics/schools operating above 100% capacity.</td>
+      </tr>
+      <tr>
+        <td><strong>Equity Need</strong></td>
+        <td>10%</td>
+        <td>Directs resources to historically marginalized or vulnerable demographic zones.</td>
+      </tr>
+      <tr>
+        <td><strong>Transport Connectivity</strong></td>
+        <td>5%</td>
+        <td>Rewards sites located along transit corridors to ensure regional access.</td>
+      </tr>
+      <tr>
+        <td><strong>Data Confidence</strong></td>
+        <td>5%</td>
+        <td>Weights decisions by the statistical reliability and verification level of inputs.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>C. Natural Language Explainability (XAI)</h3>
+  <p>
+    To ensure accountability in public hearings, every scored candidate generates human-readable justification strings explaining the mathematical drivers:
+  </p>
+  <div class="callout callout-purple">
+    <em>"Top Ranked Candidate (cand-healthcare-9-centroid): Ranked #1 (Score: 80.6) because of severe healthcare accessibility gap (86.9%) in Highlands Valley, large affected population (22,000 residents), long estimated travel time with no reachable facility in catchment, and strong transit connectivity supporting regional catchment."</em>
+  </div>
+
+  <!-- ==================== SECTION 5: WHAT-IF SIMULATION LAB ==================== -->
+  <div class="page-break"></div>
+  <h2>5. In-Memory What-If Simulation Lab & Resilience Analysis</h2>
+
+  <p>
+    The What-If Simulation Lab is CivicPulse's core planning innovation. It allows urban planners and municipal budget committees to test prospective capital expenditures before spending public funds.
+  </p>
+
+  <div class="callout callout-green">
+    <strong>Strict Safety & Zero Database Writes Guarantee:</strong> The simulation engine runs <strong>100% in-memory</strong>. Proposed facilities are instantiated as ephemeral ORM instances. Zero <code>session.add()</code> or <code>session.commit()</code> operations occur. Planners can run dozens of simulations without risking data corruption or schema mutations.
+  </div>
+
+  <h3>A. Before vs After Delta Evaluation</h3>
+  <p>
+    When a planner triggers a simulation for a candidate intervention, the engine executes a comparative dual evaluation:
+  </p>
+
+  <ol>
+    <li><strong>Baseline Calculation</strong>: Evaluates current locality accessibility, citywide coverage %, underserved population count, and average travel time.</li>
+    <li><strong>Synthetic Blending</strong>: Dynamically injects the proposed facility into catchment routing queries in-memory.</li>
+    <li><strong>Delta Computation</strong>: Measures exact marginal gains:
+      <ul>
+        <li>$\Delta\text{ Accessibility Score} = \text{Score}_{\text{after}} - \text{Score}_{\text{before}}$</li>
+        <li>$\Delta\text{ Citywide Coverage \%} = \text{Coverage}_{\text{after}} - \text{Coverage}_{\text{before}}$</li>
+        <li>$\text{Underserved Population Relieved} = \text{Residents transitioning out of Desert status}$</li>
+        <li>$\text{Travel Time Saved} = \text{Baseline Minutes} - \text{Simulated Minutes}$</li>
+      </ul>
+    </li>
+  </ol>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Baseline (Highlands Valley)</th>
+        <th>Post-Simulation State</th>
+        <th>Measured Civic Impact</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Accessibility Score</strong></td>
+        <td>13.1 / 100 (Critical Desert)</td>
+        <td>78.8 / 100 (Well Served)</td>
+        <td><strong style="color: #16a34a;">+65.7 Points</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Citywide Healthcare Coverage</strong></td>
+        <td>68.2%</td>
+        <td>92.1%</td>
+        <td><strong style="color: #16a34a;">+23.9% Expansion</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Underserved Residents</strong></td>
+        <td>22,000 residents</td>
+        <td>0 residents</td>
+        <td><strong style="color: #16a34a;">22,000 Residents Relieved</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Average Travel Time</strong></td>
+        <td>60.0 minutes (transit)</td>
+        <td>2.1 minutes (walk)</td>
+        <td><strong style="color: #16a34a;">57.9 Minutes Saved per Trip</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>B. Systemic Resilience & Single Point of Failure (SPOF) Analysis</h3>
+  <p>
+    In addition to building new infrastructure, CivicPulse models disaster scenarios:
+  </p>
+  <ul>
+    <li><strong>Facility Failure Modeling</strong>: Simulates an existing hospital or water treatment plant going offline due to flood, grid failure, or strike.</li>
+    <li><strong>Cascading Impact Evaluation</strong>: Quantifies the resulting coverage drop and flags whether the facility is a <strong>Single Point of Failure (SPOF)</strong> whose collapse plunges downstream neighbourhoods into critical desert status.</li>
+  </ul>
+
+  <!-- ==================== SECTION 6: COMMUNITY TRUST & REALITY GAP ==================== -->
+  <div class="page-break"></div>
+  <h2>6. Community Ground Truth & Civic Trust Hierarchy</h2>
+
+  <p>
+    Official municipal databases frequently present an idealized reality: a water borehole or primary clinic may be cataloged as "Operational," but on the ground it is padlocked, flooded, or lacks power. CivicPulse bridges this disparity with the <strong>Reality Gap Index</strong> and a multi-tiered verification pipeline.
+  </p>
+
+  <h3>A. Multi-Tier Verification Lifecycle</h3>
+  <pre>
+   [ Citizen Submission ]
+             │
+             ▼
+      SUBMITTED (Initial confidence: 0.50)
+             │
+             ▼
+      PENDING_REVIEW (Awaiting community ground check)
+             │
+      ┌──────┴────────────────────────┐
+      ▼                               ▼
+COMMUNITY_VERIFIED              REJECTED (Confidence: 0.00)
+(Peer verified: 0.75 - 0.90)           (Flagged as false/spam)
+      │
+      ▼
+AUTHORITY_VERIFIED (Municipal official confirmed: 0.95)
+      │
+      ▼
+   OFFICIAL (Legally binding municipal status: 1.00)
+  </pre>
+
+  <h3>B. Server-Side Role-Based Access Control (RBAC)</h3>
+  <p>
+    Civic trust cannot rely on client-side UI checks. CivicPulse enforces strict server-side RBAC guards:
+  </p>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>System Permissions</th>
+        <th>Verification Authority</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>citizen</code></td>
+        <td>Public read (<code>data:read</code>), submit report (<code>report:create</code>).</td>
+        <td>Cannot approve or verify reports (Attempts return HTTP 403 Forbidden).</td>
+      </tr>
+      <tr>
+        <td><code>community</code></td>
+        <td>Citizen permissions + peer community check (<code>report:verify_community</code>).</td>
+        <td>Can conduct peer verification up to <code>COMMUNITY_VERIFIED</code> status.</td>
+      </tr>
+      <tr>
+        <td><code>authority</code></td>
+        <td>Municipal operations (<code>authority:operate</code>) + official audit (<code>report:verify_official</code>).</td>
+        <td>Can promote reports to <code>OFFICIAL</code> status or mark as <code>REJECTED</code>.</td>
+      </tr>
+      <tr>
+        <td><code>admin</code></td>
+        <td>Platform control (<code>admin:manage</code>), role assignment, and audit oversight.</td>
+        <td>Full administrative moderation authority across all system states.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>C. Immutable Audit Logging</h3>
+  <p>
+    Every status modification is captured in an append-only <code>AuditLog</code> table storing the actor ID, entity ID, prior status, new status, audit reason, and UTC timestamp. This guarantees full transparency for legal compliance and municipal review.
+  </p>
+
+  <!-- ==================== SECTION 7: DUAL MODES & OSM INGESTION ==================== -->
+  <h2>7. Dual Operational Modes & OpenStreetMap Ingestion</h2>
+
+  <div class="grid-2 avoid-break">
+    <div class="card">
+      <h4>DEMO MODE (Default & Offline)</h4>
+      <ul>
+        <li>Self-contained deterministic dataset of "Metro City" (Bangalore coordinates).</li>
+        <li>10 administrative areas, 14 verified facilities across 5 categories, 50 community reports.</li>
+        <li>Operates 100% offline without API keys or external network dependencies.</li>
+        <li>Guarantees zero presentation flakiness during hackathon demos.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>REAL DATA MODE (Live Global GIS)</h4>
+      <ul>
+        <li>Queries OpenStreetMap via live Overpass QL API for any global municipality.</li>
+        <li>Extracts 5 core service categories: Healthcare, Education, Transport, Water, Markets.</li>
+        <li>Anti-Null Island coordinate sanitizer (rejects 0,0 or out-of-bound coordinates).</li>
+        <li>15-meter spatial deduplication buffer against existing database records.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-amber avoid-break">
+    <strong>Strict Population Data Integrity Principle:</strong> When ingesting real-world geographic data, CivicPulse <strong>never invents, hallucinates, or synthesizes census population figures</strong>. If documented public census data is provided, it is stored as <code>population_status="documented"</code>. If census records are unavailable, the count is recorded as <code>None</code> with <code>population_status="unavailable"</code>, and downstream capacity formulas adapt gracefully with explicit data quality notices.
+  </div>
+
+  <!-- ==================== SECTION 8: 3-MINUTE LIVE DEMO SCRIPT ==================== -->
+  <div class="page-break"></div>
+  <h2>8. Step-by-Step 3-Minute Live Hackathon Demo Walkthrough</h2>
+
+  <p>
+    Use this exact script and click sequence during the presentation to deliver a punchy, high-impact demo:
+  </p>
+
+  <div class="step-item">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <strong>Problem Hook (0:00 – 0:30)</strong>
+      <p style="font-size: 8.5pt; margin-top: 2px;">
+        <em>"Judges, urban inequality isn't just about income—it's about access. In every city, vulnerable neighbourhoods become service deserts where reaching a clinic takes an hour or more. Planners make multi-million dollar capital decisions using static spreadsheets, while citizen reports remain ignored. We built CivicPulse to bridge top-down municipal planning with bottom-up citizen reality."</em>
+      </p>
+    </div>
+  </div>
+
+  <div class="step-item">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <strong>Interactive Map & Locality Service Gap (0:30 – 1:00)</strong>
+      <p style="font-size: 8.5pt; margin-top: 2px;">
+        <strong>Action:</strong> Open <code>http://127.0.0.1:5173/map</code>. Point out OpenStreetMap tiles and custom color-coded category markers. Click on <strong>Highlands Valley</strong> polygon.<br/>
+        <em>"On the CivicPulse map, we see the city's administrative boundaries and cataloged facilities across healthcare, education, transport, water, and food markets. Clicking Highlands Valley reveals a critical healthcare gap: Accessibility Score is 13.1 / 100, Gap is 86.9, and the nearest clinic is 7.8 km away, representing an estimated 60-minute travel time."</em>
+      </p>
+    </div>
+  </div>
+
+  <div class="step-item">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <strong>Planner Command Center & Recommendations (1:00 – 1:40)</strong>
+      <p style="font-size: 8.5pt; margin-top: 2px;">
+        <strong>Action:</strong> Log in as Municipal Authority (<code>authority@example.com</code> / <code>Authority123!</code>). Switch to Recommendations Layer or open Planner view.<br/>
+        <em>"Logging in as Municipal Authority unlocks planning intelligence. The priority leaderboard instantly ranks Highlands Valley at #1. Instead of guessing where to build, we click Generate Recommendations. Our spatial engine scores candidate locations across 7 normalized criteria. Candidate cand-healthcare-9-centroid ranks #1 with clear explainable justifications."</em>
+      </p>
+    </div>
+  </div>
+
+  <div class="step-item">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <strong>What-If Simulation Lab & Measured Impact (1:40 – 2:20)</strong>
+      <p style="font-size: 8.5pt; margin-top: 2px;">
+        <strong>Action:</strong> Run the simulation for the top candidate.<br/>
+        <em>"Now for our core innovation: the What-If Simulation Lab. Before spending public funds, the planner simulates building a community health center at this exact site. In milliseconds, our in-memory engine re-evaluates the city: Locality accessibility jumps from 13.1 to 78.8 (+65.7 points)! 22,000 residents are relieved from a healthcare desert! Average travel time drops from 60 minutes to 2.1 minutes! And zero database writes occurred—planners can test dozens of scenarios completely risk-free."</em>
+      </p>
+    </div>
+  </div>
+
+  <div class="step-item">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <strong>Community Ground Truth & OpenStreetMap Toggle (2:20 – 3:00)</strong>
+      <p style="font-size: 8.5pt; margin-top: 2px;">
+        <strong>Action:</strong> Show Community Reports layer and toggle Query OSM.<br/>
+        <em>"Finally, CivicPulse integrates citizen ground reality. Citizens report infrastructure breakdowns; community members verify them; municipal officials approve them as Official with an immutable audit log. And with a single click on 'Query OSM', we can ingest live OpenStreetMap amenities globally with automated deduplication. CivicPulse makes urban planning transparent, equitable, and data-driven. Thank you!"</em>
+      </p>
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 9: JUDGES Q&A DEFENSE ==================== -->
+  <div class="page-break"></div>
+  <h2>9. Judges' Technical Q&A & Defense Cheat Sheet</h2>
+
+  <table class="avoid-break">
+    <thead>
+      <tr>
+        <th style="width: 25%;">Judge Question</th>
+        <th>Model Technical Defense Answer</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Q1: Why use deterministic scoring rather than an LLM or deep learning?</strong></td>
+        <td>
+          Municipal capital allocations involve statutory audits, legal liabilities, and public tax dollars. A city council cannot defend an infrastructure decision with an unexplainable neural network that hallucinates or produces non-reproducible outputs. CivicPulse uses mathematically verifiable formulas with exact factor weights ($0.30 \times \text{Gap} + 0.25 \times \text{Pop} + \dots$). Every score provides auditable mathematical proof.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q2: How do you estimate travel times without huge Google Maps API bills?</strong></td>
+        <td>
+          We built a pluggable <code>RoutingProvider</code> architecture. By default, it uses a deterministic urban detour model scaling Haversine distances by an empirical $1.30\times$ street grid factor with walking and transit speed profiles. It executes in sub-milliseconds, runs 100% offline, and costs \$0.00. For live network graphs, it integrates with open-source OSRM with automatic fallback.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q3: How do you prevent citizens from spamming fake reports?</strong></td>
+        <td>
+          We enforce a 4-tier verification pipeline: citizen reports enter as <code>PENDING_REVIEW</code> (confidence 0.50). Peer community review raises trust to 0.75–0.90. Only verified municipal authorities can approve <code>OFFICIAL</code> status (confidence 1.00) or reject false reports. Server-side RBAC returns HTTP 403 if unauthorized users attempt official approvals, and every action is recorded in an immutable <code>audit_logs</code> table.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q4: In Real Data Mode, what happens if census population data is missing? Do you synthesize it?</strong></td>
+        <td>
+          <strong>Never.</strong> We adhere to a strict data integrity principle: never present synthetic values as real measurements. If population data is missing, we record <code>population_status="unavailable"</code> and report capacity pressure as neutral with an explicit data quality flag. We never fabricate numbers.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q5: How do simulations guarantee database integrity?</strong></td>
+        <td>
+          Simulations run <strong>entirely in-memory</strong>. Proposed facilities are instantiated as ephemeral ORM objects in Python memory. The analytics engine blends them into catchment calculations on the fly. Zero <code>session.add()</code> or <code>session.commit()</code> calls execute, ensuring 100% database schema and data safety.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q6: How do you handle OpenStreetMap licensing and usage limits?</strong></td>
+        <td>
+          All Overpass data adheres to the Open Database License (ODbL 1.0). Every record stores explicit attribution, query timestamp, and raw OSM tags. Ingestion queries are hashed via SHA256 with a 24-hour TTL cache, and we enforce a 1.0s query cooldown to respect public server usage policies.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q7: How does the backend tech stack scale to millions of residents?</strong></td>
+        <td>
+          FastAPI runs asynchronous non-blocking request loops. On the database layer, transitioning from SQLite to PostgreSQL + PostGIS unlocks spatial GiST indexing (R-Tree indexes), enabling spatial queries across millions of coordinates in milliseconds.
+        </td>
+      </tr>
+      <tr>
+        <td><strong>Q8: What are current limitations and future roadmap?</strong></td>
+        <td>
+          Currently, simulations evaluate single facilities or defined multi-facility lists; combinatorial optimization across hundreds of simultaneous budget permutations is computationally intensive and planned for Stage 12+. Real-time updates currently use REST polling; WebSockets are slated for live pin broadcasting.
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== SECTION 10: VERIFICATION & CREDENTIALS ==================== -->
+  <h2>10. Verification, Credentials & Presentation Checklist</h2>
+
+  <div class="grid-2 avoid-break">
+    <div class="card">
+      <h4>System Verification Metrics</h4>
+      <ul>
+        <li><strong>Automated Backend Tests:</strong> 157 / 157 Passing (100%)</li>
+        <li><strong>Frontend Production Build:</strong> <code>tsc -b && vite build</code> passes cleanly (1.51s build time)</li>
+        <li><strong>Code Linting:</strong> <code>oxlint</code> passes with 0 errors across 31 files and 116 rules</li>
+        <li><strong>Backend Health Probes:</strong> <code>GET /health</code> returns <code>healthy</code> with SQLite connected</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Demo Account Credentials</h4>
+      <ul>
+        <li><strong>Citizen:</strong> <code>citizen@example.com</code> / <code>Citizen123!</code></li>
+        <li><strong>Community:</strong> <code>community@example.com</code> / <code>Community123!</code></li>
+        <li><strong>Municipal Authority:</strong> <code>authority@example.com</code> / <code>Authority123!</code></li>
+        <li><strong>Admin:</strong> <code>admin@example.com</code> / <code>Admin123!</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-blue avoid-break">
+    <strong>Quick Launch Commands for Demo Day:</strong><br/>
+    <code>backend\.venv\Scripts\python.exe backend\run.py</code> &nbsp;&nbsp;|&nbsp;&nbsp; <code>cd frontend &amp;&amp; npm.cmd run dev</code><br/>
+    Backend: <strong>http://127.0.0.1:8000</strong> &nbsp;&nbsp;|&nbsp;&nbsp; Frontend: <strong>http://127.0.0.1:5173</strong>
+  </div>
+
+</body>
+</html>
+"""
+
+def generate_pdf():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    html_path = os.path.join(script_dir, "temp_judges_guide.html")
+    pdf_path = os.path.join(script_dir, "CivicPulse_Project_Compendium_Judges_Guide.pdf")
+
+    html_content = build_html_content()
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print(f"HTML guide generated at: {html_path}")
+
+    # Use Microsoft Edge headless print-to-pdf
+    edge_paths = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    ]
+
+    browser_exe = None
+    for p in edge_paths:
+        if os.path.exists(p):
+            browser_exe = p
+            break
+
+    if not browser_exe:
+        print("Error: Could not locate Microsoft Edge or Chrome executable.")
+        sys.exit(1)
+
+    print(f"Using browser executable: {browser_exe}")
+    cmd = [
+        browser_exe,
+        "--headless",
+        "--disable-gpu",
+        f"--print-to-pdf={pdf_path}",
+        "--no-pdf-header-footer",
+        html_path,
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Error running browser: {result.stderr}")
+        sys.exit(result.returncode)
+
+    if os.path.exists(pdf_path):
+        size_kb = os.path.getsize(pdf_path) / 1024
+        print(f"PDF Successfully Generated: {pdf_path} ({size_kb:.1f} KB)")
+    else:
+        print("Failed to produce PDF.")
+        sys.exit(1)
+
+    # Cleanup temp html
+    if os.path.exists(html_path):
+        os.remove(html_path)
+
+if __name__ == "__main__":
+    generate_pdf()

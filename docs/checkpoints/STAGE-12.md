@@ -31,6 +31,12 @@ Final hackathon polish and production hardening of CivicPulse. Ensure determinis
    - Full data provenance stored in `audit_logs` table (OSM element ID/type, raw tags, retrieval timestamp, ODbL 1.0 license, and `© OpenStreetMap contributors` attribution).
 9. **Graceful Routing Fallback**:
    - OSRM routing provider gracefully falls back to deterministic urban detour approximation on provider timeouts or connection failures without crashing (`provider: "fallback_deterministic"`).
+10. **OpenStreetMap Overpass Service Location Provider**:
+   - Live query provider (`GET /osm/services` & `POST /osm/services`) for healthcare (hospitals, clinics, doctors), education (schools, colleges, universities), transport (bus stops, stations), water, and markets.
+   - Standardized normalized schema (`OSMNormalizedService`) handling point features (`node`) and polygon area features (`way`/`relation`) with representative centroid coordinates.
+   - Strict data integrity: preserves missing names (`null`), never invents operating status, capacity, or demographic attributes.
+   - SHA256 query caching, rate limiting (60 calls/min), and deterministic offline fallback when Overpass is unavailable or timed out.
+   - React Leaflet frontend interactive ingestion button, category badges, loading/empty/error states, and clear `© OpenStreetMap contributors` attribution.
 
 ---
 
@@ -51,7 +57,7 @@ Final hackathon polish and production hardening of CivicPulse. Ensure determinis
 |---|---|---|---|
 | 1. Backend Startup | `python backend/run.py` | Uvicorn running on `http://127.0.0.1:8000` | PASS |
 | 2. Database Migrations & Seed | Alembic & `seed.py` | Schema current, 12 entity types seeded | PASS |
-| 3. Frontend Production Build | `npm run build` | Built in 771ms, 0 errors | PASS |
+| 3. Frontend Production Build | `npm run build` | Built in 21s, 0 errors | PASS |
 | 4. Frontend Linting | `npm run lint` | 0 warnings, 0 errors (oxlint) | PASS |
 | 5. Frontend Dev Server | `npm run dev` | HTTP 200 OK on `http://127.0.0.1:5173/` | PASS |
 | 6. API Health & Auth | `/health`, `/auth/login` | 200 OK, JWT issuance across 4 roles | PASS |
@@ -61,7 +67,8 @@ Final hackathon polish and production hardening of CivicPulse. Ensure determinis
 | 10. Before/After Simulation | `/simulations` | In-memory gains (+accessibility, +coverage) | PASS |
 | 11. Role Permissions | Authority vs Citizen | Citizen receives 403 on `/planner/*` | PASS |
 | 12. Complete Critical Demo Flow | Map -> Locality -> Gap -> Rec -> Sim -> Impact | End-to-end flow verified | PASS |
-| 13. Full Automated Test Suite | `pytest backend/tests/` | **157/157 tests passing (100%)** | PASS |
+| 13. Overpass OSM Service Provider | `/osm/services` & Frontend Ingestion | Live OSM points/areas, cached, deterministic fallback | PASS |
+| 14. Full Automated Test Suite | `pytest backend/tests/` | **161/161 tests passing (100%)** | PASS |
 
 ---
 

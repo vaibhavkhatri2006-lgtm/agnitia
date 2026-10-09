@@ -108,11 +108,11 @@ class TestStage11CriticalUserFlow:
 
     def test_step2_select_locality_and_view_service_gap(self):
         """2. Selecting a locality shows accessibility/gap scores and nearest facilities."""
-        # Find Highlands Valley (known underserved locality in demo data)
+        # Find Highlands Valley / Vijay Nagar (known underserved locality in demo data)
         area_resp = client.get("/areas")
         assert area_resp.status_code == 200
         areas = area_resp.json()
-        highlands = next((a for a in areas if "Highlands" in a["name"]), areas[0])
+        highlands = next((a for a in areas if "Highlands" in a["name"] or "Vijay" in a["name"]), areas[0])
         area_id = highlands["id"]
 
         # Locality analytics scorecard

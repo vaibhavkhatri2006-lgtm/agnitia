@@ -150,9 +150,9 @@ def test_stage6_accessibility_gap_api():
     deserts = res_deserts.json()
     assert isinstance(deserts, list)
     assert len(deserts) > 0
-    # Highlands Valley healthcare desert is present
+    # Highlands Valley / Vijay Nagar healthcare desert is present
     desert_area_names = [d["area_name"] for d in deserts if d["category_code"] == "healthcare"]
-    assert "Highlands Valley" in desert_area_names
+    assert any(name in desert_area_names for name in ["Vijay Nagar", "Highlands Valley"])
 
 
 def test_stage6_ranking_api():
@@ -175,8 +175,8 @@ def test_stage6_ranking_api():
     cat_rank = res_cat_rank.json()
     assert cat_rank["category_evaluated"] == "healthcare"
     assert len(cat_rank["rankings"]) > 0
-    # Highlands Valley has 0 healthcare facilities, so it should rank #1 in healthcare need
-    assert cat_rank["rankings"][0]["area_name"] == "Highlands Valley"
+    # Highlands Valley / Vijay Nagar has 0 healthcare facilities, so it should rank #1 in healthcare need
+    assert cat_rank["rankings"][0]["area_name"] in ["Vijay Nagar", "Highlands Valley"]
     assert cat_rank["rankings"][0]["rank"] == 1
 
 

@@ -13,6 +13,7 @@ from app.schemas.real_data import (
     OSMImportResponse,
     OSMCacheStatsResponse,
     ServiceProvenanceResponse,
+    OSMQueryResponse,
 )
 from app.services.osm_service import (
     build_overpass_query,
@@ -20,6 +21,7 @@ from app.services.osm_service import (
     get_cache_stats,
     clear_osm_cache,
     get_service_provenance,
+    fetch_normalized_osm_services,
 )
 
 router = APIRouter(prefix="/osm", tags=["OpenStreetMap Ingestion"])
@@ -54,6 +56,106 @@ def import_locality_osm(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process OpenStreetMap data import: {err}",
+        )
+
+
+@router.get(
+    "/services",
+    response_model=OSMQueryResponse,
+    summary="Query and normalize civic infrastructure from OpenStreetMap via Overpass",
+)
+def get_normalized_services(
+    locality_name: Optional[str] = Query(None, description="Name of target locality (e.g. 'Koramangala')"),
+    area_id: Optional[int] = Query(None, description="Database ID of geographic area"),
+    categories: Optional[List[str]] = Query(None, description="Service categories to retrieve (healthcare, education, transport, water, market)"),
+    min_lat: Optional[float] = Query(None, description="South bounding latitude"),
+    min_lon: Optional[float] = Query(None, description="West bounding longitude"),
+    max_lat: Optional[float] = Query(None, description="North bounding latitude"),
+    max_lon: Optional[float] = Query(None, description="East bounding longitude"),
+    center_lat: Optional[float] = Query(None, description="Center latitude"),
+    center_lon: Optional[float] = Query(None, description="Center longitude"),
+    radius_meters: float = Query(2000.0, description="Search radius in meters"),
+    fallback_to_demo: bool = Query(True, description="Fallback to deterministic local data if Overpass is unavailable"),
+    force_live: bool = Query(False, description="Force live Overpass query even in DEMO_MODE"),
+    db: Session = Depends(get_db),
+):
+    """
+    Overpass Data Provider Endpoint:
+    Retrieves hospitals, clinics, doctors, schools, colleges, universities, bus stops,
+    and civic amenities for the selected locality.
+
+    Returns normalized records conforming to strict schema:
+    OSM ID, name, service category, latitude, longitude, tags, and source.
+    Correctly handles both point features (nodes) and area features (ways/relations)
+    using representative coordinates for mapped areas.
+    """
+    bbox = None
+    if all(v is not None for v in (min_lat, min_lon, max_lat, max_lon)):
+        bbox = [min_lat, min_lon, max_lat, max_lon]
+
+    try:
+        response = fetch_normalized_osm_services(
+            db=db,
+            locality_name=locality_name,
+            area_id=area_id,
+            bbox=bbox,
+            center_lat=center_lat,
+            center_lon=center_lon,
+            radius_meters=radius_meters,
+            categories=categories,
+            fallback_to_demo=fallback_to_demo,
+            force_live=force_live,
+        )
+        return response
+    except RuntimeError as err:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"OpenStreetMap Overpass API error: {err}",
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to query OpenStreetMap services: {err}",
+        )
+
+
+@router.post(
+    "/services",
+    response_model=OSMQueryResponse,
+    summary="Query and normalize civic infrastructure from OpenStreetMap with JSON payload",
+)
+def post_normalized_services(
+    request: OSMImportRequest,
+    fallback_to_demo: bool = Query(True, description="Fallback to deterministic local data if Overpass is unavailable"),
+    force_live: bool = Query(False, description="Force live Overpass query even in DEMO_MODE"),
+    db: Session = Depends(get_db),
+):
+    """
+    POST variant of Overpass Data Provider accepting JSON body.
+    """
+    try:
+        response = fetch_normalized_osm_services(
+            db=db,
+            locality_name=request.locality_name,
+            area_id=request.area_id,
+            bbox=request.bbox,
+            center_lat=request.center_latitude,
+            center_lon=request.center_longitude,
+            radius_meters=request.radius_meters or 2000.0,
+            categories=request.categories,
+            fallback_to_demo=fallback_to_demo,
+            force_live=force_live,
+        )
+        return response
+    except RuntimeError as err:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"OpenStreetMap Overpass API error: {err}",
+        )
+    except Exception as err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to query OpenStreetMap services: {err}",
         )
 
 

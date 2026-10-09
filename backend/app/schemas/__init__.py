@@ -114,6 +114,8 @@ from app.schemas.real_data import (
     OSMImportResponse,
     OSMCacheStatsResponse,
     ServiceProvenanceResponse,
+    OSMNormalizedService,
+    OSMQueryResponse,
 )
 
 __all__ = [
@@ -199,4 +201,6 @@ __all__ = [
     "OSMImportResponse",
     "OSMCacheStatsResponse",
     "ServiceProvenanceResponse",
+    "OSMNormalizedService",
+    "OSMQueryResponse",
 ]

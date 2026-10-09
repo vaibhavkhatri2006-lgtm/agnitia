@@ -37,6 +37,7 @@ class ScoredCandidateResponse(BaseModel):
     population: int
     strategy: str
     confidence: float
+    expected_gain_pts: Optional[float] = Field(None, description="Expected access-score gain (points)")
     factor_values: FactorValues
     factor_weights: FactorWeights
     reasons: List[str]

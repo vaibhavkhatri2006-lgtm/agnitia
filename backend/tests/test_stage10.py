@@ -78,8 +78,8 @@ def test_switching_scope_changes_metrics():
     # Area names match the appropriate scale
     neigh_names = [a["name"] for a in data_neigh["areas"]]
     ward_names = [a["name"] for a in data_ward["areas"]]
-    assert "Downtown Core" in neigh_names
-    assert "District 1 - Central Ward" in ward_names
+    assert any(name in neigh_names for name in ["Rajwada", "Downtown Core"])
+    assert any(name in ward_names for name in ["Zone 1 - Rajwada Central", "District 1 - Central Ward"])
 
 
 # --- Check 2: Permissions are respected ---
@@ -127,7 +127,7 @@ def test_api_accepts_and_validates_hierarchy():
 
     root = tree[0]
     assert root["area_type"] == "city"
-    assert root["name"] == "Metro City"
+    assert root["name"] in ["Indore", "Metro City"]
     assert len(root["children"]) >= 4  # Districts
 
     district = root["children"][0]

@@ -63,8 +63,8 @@ def test_candidate_generation(db):
         assert cand.validity_status in ["valid", "rejected"]
         assert cand.strategy in ["centroid", "population_node", "gap_perimeter"]
 
-    # Highlands Valley must have at least one candidate for healthcare
-    hv_candidates = [c for c in candidates if c.area_name == "Highlands Valley"]
+    # Highlands Valley / Vijay Nagar must have at least one candidate for healthcare
+    hv_candidates = [c for c in candidates if c.area_name in ["Vijay Nagar", "Highlands Valley"]]
     assert len(hv_candidates) >= 1
     assert any(c.validity_status == "valid" for c in hv_candidates)
 
@@ -103,8 +103,8 @@ def test_underserved_area_filtering(db):
         assert metrics["accessibility_score"] < 80.0
         assert metrics["gap_score"] >= 20.0
 
-    # Downtown Core has a hospital and is Well Served -> must be excluded
-    downtown = next((a for a, m in underserved if a.name == "Downtown Core"), None)
+    # Downtown Core / Rajwada has a hospital and is Well Served -> must be excluded
+    downtown = next((a for a, m in underserved if a.name in ["Rajwada", "Downtown Core"]), None)
     assert downtown is None, "Well Served areas must be excluded from candidate generation"
 
 

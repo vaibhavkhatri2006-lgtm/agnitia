@@ -15,7 +15,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from sqlalchemy.orm import Session
-from app.database import engine, SessionLocal
+from app.database import engine, SessionLocal, Base
 from app.models import (
     DataSource,
     GeographicArea,
@@ -36,6 +36,7 @@ from app.core.security import hash_password
 def seed_database(db: Session) -> dict:
     """Executes deterministic seeding. Idempotent and reproducible."""
     print("Beginning deterministic seeding...")
+    Base.metadata.create_all(bind=db.get_bind())
 
     # 1. DATA SOURCES
     data_sources_data = [
@@ -70,46 +71,68 @@ def seed_database(db: Session) -> dict:
     cat_map = {c.code: c.id for c in db.query(ServiceCategory).all()}
 
     # 3. GEOGRAPHIC AREAS (Hierarchy: City -> Districts -> Neighbourhoods)
-    # City root
-    city = db.query(GeographicArea).filter_by(name="Metro City").first()
+    # City root: Indore, Madhya Pradesh
+    city = db.query(GeographicArea).filter_by(name="Indore").first()
     if not city:
-        city = GeographicArea(
-            name="Metro City",
-            area_type="city",
-            parent_id=None,
-            population=72000,
-            geometry="MULTIPOLYGON (((77.5600 12.9400, 77.6400 12.9400, 77.6400 13.0100, 77.5600 13.0100, 77.5600 12.9400)))",
-        )
-        db.add(city)
-        db.flush()
+        # Check if old Metro City exists to migrate/reuse or create fresh
+        old_city = db.query(GeographicArea).filter_by(name="Metro City").first()
+        if old_city:
+            city = old_city
+            city.name = "Indore"
+            city.geometry = "MULTIPOLYGON (((75.8000 22.6500, 75.9300 22.6500, 75.9300 22.7800, 75.8000 22.7800, 75.8000 22.6500)))"
+            db.flush()
+        else:
+            city = GeographicArea(
+                name="Indore",
+                area_type="city",
+                parent_id=None,
+                population=72000,
+                geometry="MULTIPOLYGON (((75.8000 22.6500, 75.9300 22.6500, 75.9300 22.7800, 75.8000 22.7800, 75.8000 22.6500)))",
+            )
+            db.add(city)
+            db.flush()
 
-    # Districts
+    # Districts / Wards (Indore administrative zones)
     districts = {
-        "District 1 - Central Ward": {
+        "Zone 1 - Rajwada Central": {
             "area_type": "ward",
             "parent_id": city.id,
             "population": 37000,
-            "geometry": "MULTIPOLYGON (((77.5800 12.9650, 77.6100 12.9650, 77.6100 12.9900, 77.5800 12.9900, 77.5800 12.9650)))",
+            "geometry": "MULTIPOLYGON (((75.8450 22.7100, 75.8650 22.7100, 75.8650 22.7300, 75.8450 22.7300, 75.8450 22.7100)))",
         },
-        "District 2 - Riverside North": {
+        "Zone 2 - Palasia East": {
             "area_type": "ward",
             "parent_id": city.id,
             "population": 18000,
-            "geometry": "MULTIPOLYGON (((77.5850 12.9900, 77.6200 12.9900, 77.6200 13.0100, 77.5850 13.0100, 77.5850 12.9900)))",
+            "geometry": "MULTIPOLYGON (((75.8750 22.7150, 75.9000 22.7150, 75.9000 22.7350, 75.8750 22.7350, 75.8750 22.7150)))",
         },
-        "District 3 - Highlands East": {
+        "Zone 3 - Vijay Nagar North": {
             "area_type": "ward",
             "parent_id": city.id,
             "population": 22000,
-            "geometry": "MULTIPOLYGON (((77.6100 12.9650, 77.6400 12.9650, 77.6400 12.9900, 77.6100 12.9900, 77.6100 12.9650)))",
+            "geometry": "MULTIPOLYGON (((75.8800 22.7400, 75.9150 22.7400, 75.9150 22.7650, 75.8800 22.7650, 75.8800 22.7400)))",
         },
-        "District 4 - Southern Outskirts": {
+        "Zone 4 - Bhanwarkuan South": {
             "area_type": "ward",
             "parent_id": city.id,
             "population": 15000,
-            "geometry": "MULTIPOLYGON (((77.5650 12.9400, 77.6000 12.9400, 77.6000 12.9650, 77.5650 12.9650, 77.5650 12.9400)))",
+            "geometry": "MULTIPOLYGON (((75.8500 22.6800, 75.8750 22.6800, 75.8750 22.7050, 75.8500 22.7050, 75.8500 22.6800)))",
         },
     }
+
+    # Name mapping for seamless update of existing data if needed
+    legacy_district_map = {
+        "District 1 - Central Ward": "Zone 1 - Rajwada Central",
+        "District 2 - Riverside North": "Zone 2 - Palasia East",
+        "District 3 - Highlands East": "Zone 3 - Vijay Nagar North",
+        "District 4 - Southern Outskirts": "Zone 4 - Bhanwarkuan South",
+    }
+    for old_dname, new_dname in legacy_district_map.items():
+        old_rec = db.query(GeographicArea).filter_by(name=old_dname).first()
+        if old_rec and not db.query(GeographicArea).filter_by(name=new_dname).first():
+            old_rec.name = new_dname
+            old_rec.geometry = districts[new_dname]["geometry"]
+            db.flush()
 
     dist_map = {}
     for name, data in districts.items():
@@ -120,39 +143,54 @@ def seed_database(db: Session) -> dict:
             db.flush()
         dist_map[name] = existing.id
 
-    # Neighbourhoods
+    # Neighbourhoods (Prominent Indore localities)
     neighbourhoods = {
-        "Downtown Core": {
+        "Rajwada": {
             "area_type": "neighbourhood",
-            "parent_id": dist_map["District 1 - Central Ward"],
+            "parent_id": dist_map["Zone 1 - Rajwada Central"],
             "population": 25000,
-            "geometry": "MULTIPOLYGON (((77.5850 12.9700, 77.6050 12.9700, 77.6050 12.9850, 77.5850 12.9850, 77.5850 12.9700)))",
+            "geometry": "MULTIPOLYGON (((75.8520 22.7150, 75.8620 22.7150, 75.8620 22.7240, 75.8520 22.7240, 75.8520 22.7150)))",
         },
-        "West End": {
+        "Sarafa": {
             "area_type": "neighbourhood",
-            "parent_id": dist_map["District 1 - Central Ward"],
+            "parent_id": dist_map["Zone 1 - Rajwada Central"],
             "population": 12000,
-            "geometry": "MULTIPOLYGON (((77.5800 12.9650, 77.5850 12.9650, 77.5850 12.9850, 77.5800 12.9850, 77.5800 12.9650)))",
+            "geometry": "MULTIPOLYGON (((75.8460 22.7140, 75.8520 22.7140, 75.8520 22.7210, 75.8460 22.7210, 75.8460 22.7140)))",
         },
-        "Riverside Commons": {
+        "Old Palasia": {
             "area_type": "neighbourhood",
-            "parent_id": dist_map["District 2 - Riverside North"],
+            "parent_id": dist_map["Zone 2 - Palasia East"],
             "population": 18000,
-            "geometry": "MULTIPOLYGON (((77.5900 12.9900, 77.6150 12.9900, 77.6150 13.0080, 77.5900 13.0080, 77.5900 12.9900)))",
+            "geometry": "MULTIPOLYGON (((75.8900 22.7180, 75.9080 22.7180, 75.9080 22.7320, 75.8900 22.7320, 75.8900 22.7180)))",
         },
-        "Highlands Valley": {
+        "Vijay Nagar": {
             "area_type": "neighbourhood",
-            "parent_id": dist_map["District 3 - Highlands East"],
+            "parent_id": dist_map["Zone 3 - Vijay Nagar North"],
             "population": 22000,
-            "geometry": "MULTIPOLYGON (((77.6120 12.9680, 77.6380 12.9680, 77.6380 12.9880, 77.6120 12.9880, 77.6120 12.9680)))",
+            "geometry": "MULTIPOLYGON (((75.8860 22.7450, 75.9080 22.7450, 75.9080 22.7620, 75.8860 22.7620, 75.8860 22.7450)))",
         },
-        "South Hillside": {
+        "Bhanwarkuan": {
             "area_type": "neighbourhood",
-            "parent_id": dist_map["District 4 - Southern Outskirts"],
+            "parent_id": dist_map["Zone 4 - Bhanwarkuan South"],
             "population": 15000,
-            "geometry": "MULTIPOLYGON (((77.5680 12.9420, 77.5980 12.9420, 77.5980 12.9630, 77.5680 12.9630, 77.5680 12.9420)))",
+            "geometry": "MULTIPOLYGON (((75.8500 22.6950, 75.8650 22.6950, 75.8650 22.7080, 75.8500 22.7080, 75.8500 22.6950)))",
         },
     }
+
+    legacy_neigh_map = {
+        "Downtown Core": "Rajwada",
+        "West End": "Sarafa",
+        "Riverside Commons": "Old Palasia",
+        "Highlands Valley": "Vijay Nagar",
+        "South Hillside": "Bhanwarkuan",
+    }
+    for old_nname, new_nname in legacy_neigh_map.items():
+        old_nrec = db.query(GeographicArea).filter_by(name=old_nname).first()
+        if old_nrec and not db.query(GeographicArea).filter_by(name=new_nname).first():
+            old_nrec.name = new_nname
+            old_nrec.geometry = neighbourhoods[new_nname]["geometry"]
+            old_nrec.parent_id = neighbourhoods[new_nname]["parent_id"]
+            db.flush()
 
     neigh_map = {}
     for name, data in neighbourhoods.items():
@@ -161,32 +199,35 @@ def seed_database(db: Session) -> dict:
             existing = GeographicArea(name=name, **data)
             db.add(existing)
             db.flush()
+        else:
+            existing.geometry = data["geometry"]
+            db.flush()
         neigh_map[name] = existing.id
 
-    # 4. POPULATION CELLS (Fine-grained Demographic breakdown)
+    # 4. POPULATION CELLS (Fine-grained Demographic breakdown with Indore coordinates)
     cells_data = [
         {
-            "area_id": neigh_map["Downtown Core"],
+            "area_id": neigh_map["Rajwada"],
             "population": 15000,
-            "geometry": "POLYGON ((77.5860 12.9710, 77.5950 12.9710, 77.5950 12.9800, 77.5860 12.9800, 77.5860 12.9710))",
+            "geometry": "POLYGON ((75.8530 22.7160, 75.8600 22.7160, 75.8600 22.7220, 75.8530 22.7220, 75.8530 22.7160))",
             "demographics": json.dumps({"median_age": 32, "vulnerability_index": 0.20, "child_dependency": 0.15, "elderly_ratio": 0.10}),
         },
         {
-            "area_id": neigh_map["Downtown Core"],
+            "area_id": neigh_map["Rajwada"],
             "population": 10000,
-            "geometry": "POLYGON ((77.5950 12.9710, 77.6040 12.9710, 77.6040 12.9800, 77.5950 12.9800, 77.5950 12.9710))",
+            "geometry": "POLYGON ((75.8550 22.7180, 75.8620 22.7180, 75.8620 22.7240, 75.8550 22.7240, 75.8550 22.7180))",
             "demographics": json.dumps({"median_age": 34, "vulnerability_index": 0.22, "child_dependency": 0.18, "elderly_ratio": 0.11}),
         },
         {
-            "area_id": neigh_map["Highlands Valley"],
+            "area_id": neigh_map["Vijay Nagar"],
             "population": 22000,
-            "geometry": "POLYGON ((77.6150 12.9700, 77.6350 12.9700, 77.6350 12.9850, 77.6150 12.9850, 77.6150 12.9700))",
+            "geometry": "POLYGON ((75.8880 22.7470, 75.9050 22.7470, 75.9050 22.7600, 75.8880 22.7600, 75.8880 22.7470))",
             "demographics": json.dumps({"median_age": 28, "vulnerability_index": 0.68, "child_dependency": 0.35, "elderly_ratio": 0.18}),
         },
         {
-            "area_id": neigh_map["South Hillside"],
+            "area_id": neigh_map["Bhanwarkuan"],
             "population": 15000,
-            "geometry": "POLYGON ((77.5700 12.9450, 77.5950 12.9450, 77.5950 12.9600, 77.5700 12.9600, 77.5700 12.9450))",
+            "geometry": "POLYGON ((75.8520 22.6960, 75.8640 22.6960, 75.8640 22.7070, 75.8520 22.7070, 75.8520 22.6960))",
             "demographics": json.dumps({"median_age": 31, "vulnerability_index": 0.74, "child_dependency": 0.38, "elderly_ratio": 0.21}),
         },
     ]
@@ -197,20 +238,20 @@ def seed_database(db: Session) -> dict:
             db.add(PopulationCell(**cell, source_type="simulated_demo"))
     db.flush()
 
-    # 5. SERVICES & CAPACITIES
+    # 5. SERVICES & CAPACITIES (Real Indore landmarks and facilities)
     # Variation:
-    # - Highlands Valley has NO clinic/hospital (poor healthcare access)
-    # - South Hillside has bus point temporarily unavailable (poor transport access)
-    # - Riverside health center is overloaded
+    # - Vijay Nagar has NO clinic/hospital (critical healthcare desert)
+    # - Bhanwarkuan has BRTS bus point temporarily unavailable (poor transport access)
+    # - Palasia health center is overloaded
     services_data = [
         # Healthcare
         {
-            "name": "Central Metro Hospital",
+            "name": "MY Hospital Indore",
             "category_id": cat_map["healthcare"],
-            "area_id": neigh_map["Downtown Core"],
-            "latitude": 12.9750,
-            "longitude": 77.5900,
-            "geometry": "POINT (77.5900 12.9750)",
+            "area_id": neigh_map["Rajwada"],
+            "latitude": 22.7160,
+            "longitude": 75.8680,
+            "geometry": "POINT (75.8680 22.7160)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.98,
@@ -220,12 +261,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "West End Community Clinic",
+            "name": "Sarafa Community Dispensary",
             "category_id": cat_map["healthcare"],
-            "area_id": neigh_map["West End"],
-            "latitude": 12.9720,
-            "longitude": 77.5820,
-            "geometry": "POINT (77.5820 12.9720)",
+            "area_id": neigh_map["Sarafa"],
+            "latitude": 22.7172,
+            "longitude": 75.8510,
+            "geometry": "POINT (75.8510 22.7172)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.92,
@@ -235,12 +276,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "constrained",
         },
         {
-            "name": "Riverside Health Center",
+            "name": "Palasia Health Center",
             "category_id": cat_map["healthcare"],
-            "area_id": neigh_map["Riverside Commons"],
-            "latitude": 12.9980,
-            "longitude": 77.6020,
-            "geometry": "POINT (77.6020 12.9980)",
+            "area_id": neigh_map["Old Palasia"],
+            "latitude": 22.7250,
+            "longitude": 75.8990,
+            "geometry": "POINT (75.8990 22.7250)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.95,
@@ -251,12 +292,12 @@ def seed_database(db: Session) -> dict:
         },
         # Education
         {
-            "name": "Downtown Central Academy",
+            "name": "Rajwada Central School",
             "category_id": cat_map["education"],
-            "area_id": neigh_map["Downtown Core"],
-            "latitude": 12.9780,
-            "longitude": 77.5960,
-            "geometry": "POINT (77.5960 12.9780)",
+            "area_id": neigh_map["Rajwada"],
+            "latitude": 22.7190,
+            "longitude": 75.8570,
+            "geometry": "POINT (75.8570 22.7190)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.99,
@@ -266,12 +307,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "Highlands Public School",
+            "name": "Vijay Nagar Public School",
             "category_id": cat_map["education"],
-            "area_id": neigh_map["Highlands Valley"],
-            "latitude": 12.9760,
-            "longitude": 77.6250,
-            "geometry": "POINT (77.6250 12.9760)",
+            "area_id": neigh_map["Vijay Nagar"],
+            "latitude": 22.7533,
+            "longitude": 75.8937,
+            "geometry": "POINT (75.8937 22.7533)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.94,
@@ -281,12 +322,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "South Hillside Primary",
+            "name": "DAVV University Campus School",
             "category_id": cat_map["education"],
-            "area_id": neigh_map["South Hillside"],
-            "latitude": 12.9520,
-            "longitude": 77.5850,
-            "geometry": "POINT (77.5850 12.9520)",
+            "area_id": neigh_map["Bhanwarkuan"],
+            "latitude": 22.6896,
+            "longitude": 75.8648,
+            "geometry": "POINT (75.8648 22.6896)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.90,
@@ -297,12 +338,12 @@ def seed_database(db: Session) -> dict:
         },
         # Transport
         {
-            "name": "Central Multimodal Transit Hub",
+            "name": "Indore Central Railway Station Transit Hub",
             "category_id": cat_map["transport"],
-            "area_id": neigh_map["Downtown Core"],
-            "latitude": 12.9730,
-            "longitude": 77.5920,
-            "geometry": "POINT (77.5920 12.9730)",
+            "area_id": neigh_map["Rajwada"],
+            "latitude": 22.7175,
+            "longitude": 75.8655,
+            "geometry": "POINT (75.8655 22.7175)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.99,
@@ -312,12 +353,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "Riverside Metro Station",
+            "name": "AICTSL Palasia iBus Station",
             "category_id": cat_map["transport"],
-            "area_id": neigh_map["Riverside Commons"],
-            "latitude": 12.9950,
-            "longitude": 77.6050,
-            "geometry": "POINT (77.6050 12.9950)",
+            "area_id": neigh_map["Old Palasia"],
+            "latitude": 22.7250,
+            "longitude": 75.8845,
+            "geometry": "POINT (75.8845 22.7250)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.96,
@@ -327,28 +368,28 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "South Hillside Bus Hub",
+            "name": "Bhanwarkuan BRTS Bus Hub",
             "category_id": cat_map["transport"],
-            "area_id": neigh_map["South Hillside"],
-            "latitude": 12.9500,
-            "longitude": 77.5800,
-            "geometry": "POINT (77.5800 12.9500)",
+            "area_id": neigh_map["Bhanwarkuan"],
+            "latitude": 22.6880,
+            "longitude": 75.8640,
+            "geometry": "POINT (75.8640 22.6880)",
             "status": "temporarily_unavailable",  # Service condition variation!
             "verification_status": "verified",
             "confidence_score": 0.88,
-            "operating_hours": "Out of Service due to landslide repair",
+            "operating_hours": "Out of Service due to corridor repair",
             "capacity": 800,
             "current_load": 0,
             "cap_status": "constrained",
         },
         # Water
         {
-            "name": "Downtown Municipal Purification Facility",
+            "name": "Rajwada Municipal Water Supply",
             "category_id": cat_map["water"],
-            "area_id": neigh_map["Downtown Core"],
-            "latitude": 12.9790,
-            "longitude": 77.5880,
-            "geometry": "POINT (77.5880 12.9790)",
+            "area_id": neigh_map["Rajwada"],
+            "latitude": 22.7200,
+            "longitude": 75.8560,
+            "geometry": "POINT (75.8560 22.7200)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.97,
@@ -358,12 +399,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "Highlands Spring Water Point",
+            "name": "Narmada Phase-III Vijay Nagar Water Reservoir",
             "category_id": cat_map["water"],
-            "area_id": neigh_map["Highlands Valley"],
-            "latitude": 12.9740,
-            "longitude": 77.6300,
-            "geometry": "POINT (77.6300 12.9740)",
+            "area_id": neigh_map["Vijay Nagar"],
+            "latitude": 22.7540,
+            "longitude": 75.8950,
+            "geometry": "POINT (75.8950 22.7540)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.89,
@@ -373,12 +414,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "constrained",
         },
         {
-            "name": "South Hillside Community Well #4",
+            "name": "Bhanwarkuan Sector 4 Community Well",
             "category_id": cat_map["water"],
-            "area_id": neigh_map["South Hillside"],
-            "latitude": 12.9480,
-            "longitude": 77.5750,
-            "geometry": "POINT (77.5750 12.9480)",
+            "area_id": neigh_map["Bhanwarkuan"],
+            "latitude": 22.6870,
+            "longitude": 75.8630,
+            "geometry": "POINT (75.8630 22.6870)",
             "status": "degraded",  # Service condition variation!
             "verification_status": "pending",
             "confidence_score": 0.72,
@@ -389,12 +430,12 @@ def seed_database(db: Session) -> dict:
         },
         # Market
         {
-            "name": "Grand Central Produce Market",
+            "name": "Rajwada Heritage Produce Market",
             "category_id": cat_map["market"],
-            "area_id": neigh_map["Downtown Core"],
-            "latitude": 12.9725,
-            "longitude": 77.5950,
-            "geometry": "POINT (77.5950 12.9725)",
+            "area_id": neigh_map["Rajwada"],
+            "latitude": 22.7185,
+            "longitude": 75.8550,
+            "geometry": "POINT (75.8550 22.7185)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.98,
@@ -404,12 +445,12 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
         {
-            "name": "Riverside Farmers Market",
+            "name": "Chhappan Dukan Gourmet Market",
             "category_id": cat_map["market"],
-            "area_id": neigh_map["Riverside Commons"],
-            "latitude": 12.9920,
-            "longitude": 77.6100,
-            "geometry": "POINT (77.6100 12.9920)",
+            "area_id": neigh_map["Old Palasia"],
+            "latitude": 22.7230,
+            "longitude": 75.8810,
+            "geometry": "POINT (75.8810 22.7230)",
             "status": "operational",
             "verification_status": "verified",
             "confidence_score": 0.93,
@@ -419,6 +460,35 @@ def seed_database(db: Session) -> dict:
             "cap_status": "normal",
         },
     ]
+
+    # Legacy service migration if upgrading from existing database
+    legacy_service_map = {
+        "Central Metro Hospital": "MY Hospital Indore",
+        "West End Community Clinic": "Sarafa Community Dispensary",
+        "Riverside Health Center": "Palasia Health Center",
+        "Downtown Central Academy": "Rajwada Central School",
+        "Highlands Public School": "Vijay Nagar Public School",
+        "South Hillside Primary": "DAVV University Campus School",
+        "Central Multimodal Transit Hub": "Indore Central Railway Station Transit Hub",
+        "Riverside Metro Station": "AICTSL Palasia iBus Station",
+        "South Hillside Bus Hub": "Bhanwarkuan BRTS Bus Hub",
+        "Downtown Municipal Purification Facility": "Rajwada Municipal Water Supply",
+        "Highlands Spring Water Point": "Narmada Phase-III Vijay Nagar Water Reservoir",
+        "South Hillside Community Well #4": "Bhanwarkuan Sector 4 Community Well",
+        "Grand Central Produce Market": "Rajwada Heritage Produce Market",
+        "Riverside Farmers Market": "Chhappan Dukan Gourmet Market",
+    }
+    for old_sname, new_sname in legacy_service_map.items():
+        old_srec = db.query(Service).filter_by(name=old_sname).first()
+        if old_srec and not db.query(Service).filter_by(name=new_sname).first():
+            old_srec.name = new_sname
+            matching_sdata = next((s for s in services_data if s["name"] == new_sname), None)
+            if matching_sdata:
+                old_srec.latitude = matching_sdata["latitude"]
+                old_srec.longitude = matching_sdata["longitude"]
+                old_srec.geometry = matching_sdata["geometry"]
+                old_srec.area_id = matching_sdata["area_id"]
+            db.flush()
 
     service_map = {}
     for item in services_data:
@@ -441,20 +511,26 @@ def seed_database(db: Session) -> dict:
             )
             db.add(cap)
             db.flush()
+        else:
+            existing_svc.latitude = item["latitude"]
+            existing_svc.longitude = item["longitude"]
+            existing_svc.geometry = item["geometry"]
+            existing_svc.area_id = item["area_id"]
+            db.flush()
 
         service_map[existing_svc.name] = existing_svc.id
 
-    # 6. COMMUNITY REPORTS & VERIFICATION (With variation in severity and status)
+    # 6. COMMUNITY REPORTS & VERIFICATION (Real Indore civic reports)
     reports_data = [
         {
-            "title": "Low water pressure and particulate matter in Well #4",
-            "description": "Residents in Sector 2 report brown water and severe drop in flow rate since yesterday.",
+            "title": "Low water pressure and particulate matter in Sector 4 Well",
+            "description": "Residents near Bhanwarkuan report brown water and severe drop in flow rate since yesterday.",
             "category_id": cat_map["water"],
-            "service_id": service_map.get("South Hillside Community Well #4"),
-            "area_id": neigh_map["South Hillside"],
-            "latitude": 12.9482,
-            "longitude": 77.5755,
-            "geometry": "POINT (77.5755 12.9482)",
+            "service_id": service_map.get("Bhanwarkuan Sector 4 Community Well"),
+            "area_id": neigh_map["Bhanwarkuan"],
+            "latitude": 22.6872,
+            "longitude": 75.8635,
+            "geometry": "POINT (75.8635 22.6872)",
             "severity": "high",
             "status": "verified",
             "verification_status": "verified",
@@ -468,14 +544,14 @@ def seed_database(db: Session) -> dict:
             },
         },
         {
-            "title": "South Hillside Bus Hub closed due to debris on feeder route",
-            "description": "Feeder road blocked by fallen rocks, all feeder buses stranded or rerouted.",
+            "title": "Bhanwarkuan BRTS Bus Hub closed due to corridor repairs",
+            "description": "BRTS lane maintenance near Bhanwarkuan square, buses diverted along ring road.",
             "category_id": cat_map["transport"],
-            "service_id": service_map.get("South Hillside Bus Hub"),
-            "area_id": neigh_map["South Hillside"],
-            "latitude": 12.9502,
-            "longitude": 77.5802,
-            "geometry": "POINT (77.5802 12.9502)",
+            "service_id": service_map.get("Bhanwarkuan BRTS Bus Hub"),
+            "area_id": neigh_map["Bhanwarkuan"],
+            "latitude": 22.6882,
+            "longitude": 75.8642,
+            "geometry": "POINT (75.8642 22.6882)",
             "severity": "critical",
             "status": "in_review",
             "verification_status": "pending",
@@ -485,18 +561,18 @@ def seed_database(db: Session) -> dict:
                 "verifier_id": "dispatch_agent_03",
                 "verification_status": "pending",
                 "verification_type": "peer_confirmation",
-                "notes": "Highway clearing team dispatched to verify access clearance timeline.",
+                "notes": "Traffic clearing team dispatched to verify corridor access clearance timeline.",
             },
         },
         {
             "title": "Severe clinic overcrowding and long triage delays",
-            "description": "Over 50 patients waiting outside in heat. Triage nurse shortage reported.",
+            "description": "Over 50 patients waiting outside Palasia clinic. Triage nurse shortage reported.",
             "category_id": cat_map["healthcare"],
-            "service_id": service_map.get("Riverside Health Center"),
-            "area_id": neigh_map["Riverside Commons"],
-            "latitude": 12.9982,
-            "longitude": 77.6022,
-            "geometry": "POINT (77.6022 12.9982)",
+            "service_id": service_map.get("Palasia Health Center"),
+            "area_id": neigh_map["Old Palasia"],
+            "latitude": 22.7246,
+            "longitude": 75.8841,
+            "geometry": "POINT (75.8841 22.7246)",
             "severity": "medium",
             "status": "submitted",
             "verification_status": "unverified",
@@ -505,14 +581,14 @@ def seed_database(db: Session) -> dict:
             "verification": None,
         },
         {
-            "title": "Urgent need for mobile medical clinic in Highlands Valley",
-            "description": "Over 20,000 residents lack local basic clinic services; closest hospital is over 45 minutes by bus.",
+            "title": "Urgent need for primary health centre in Vijay Nagar",
+            "description": "Over 22,000 residents lack local basic clinic services; closest government hospital (MY Hospital) is over 25 minutes in traffic.",
             "category_id": cat_map["healthcare"],
             "service_id": None,
-            "area_id": neigh_map["Highlands Valley"],
-            "latitude": 12.9750,
-            "longitude": 77.6280,
-            "geometry": "POINT (77.6280 12.9750)",
+            "area_id": neigh_map["Vijay Nagar"],
+            "latitude": 22.7535,
+            "longitude": 75.8940,
+            "geometry": "POINT (75.8940 22.7535)",
             "severity": "high",
             "status": "submitted",
             "verification_status": "unverified",

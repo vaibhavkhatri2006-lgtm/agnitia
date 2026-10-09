@@ -77,6 +77,7 @@ def create_recommendations(
             population=item.population,
             strategy=item.strategy,
             confidence=item.confidence,
+            expected_gain_pts=getattr(item, "expected_gain_pts", None),
             factor_values=FactorValues(**item.factor_values),
             factor_weights=FactorWeights(**item.factor_weights),
             reasons=item.reasons,

@@ -304,21 +304,21 @@ def test_api_get_area_detail_and_highlands_valley_healthcare_desert():
     Highlands Valley (Pop 22,000) was seeded in Stage 1 with NO healthcare facilities.
     Verify that our analytics engine accurately flags it as a healthcare desert.
     """
-    # 1. Discover Highlands Valley ID dynamically from areas endpoint
+    # 1. Discover Highlands Valley / Vijay Nagar ID dynamically from areas endpoint
     areas_resp = client.get("/analytics/areas")
     assert areas_resp.status_code == 200
     hv_area = next(
-        (a for a in areas_resp.json() if a["area_name"] == "Highlands Valley"),
+        (a for a in areas_resp.json() if a["area_name"] in ["Vijay Nagar", "Highlands Valley"]),
         None,
     )
-    assert hv_area is not None, "Highlands Valley must be present in geographic areas"
+    assert hv_area is not None, "Vijay Nagar or Highlands Valley must be present in geographic areas"
     hv_id = hv_area["area_id"]
 
     # 2. Detail endpoint with all categories
     response = client.get(f"/analytics/areas/{hv_id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["area_name"] == "Highlands Valley"
+    assert data["area_name"] in ["Vijay Nagar", "Highlands Valley"]
     assert data["category_breakdown"] is not None
 
     # Find healthcare category in breakdown
@@ -327,7 +327,7 @@ def test_api_get_area_detail_and_highlands_valley_healthcare_desert():
         None,
     )
     assert hc_breakdown is not None
-    # Highlands Valley has 0 healthcare facilities in catchment -> Critical Desert or Underserved
+    # Highlands Valley / Vijay Nagar has 0 healthcare facilities in catchment -> Critical Desert or Underserved
     assert hc_breakdown["accessibility_score"] < 40.0
     assert hc_breakdown["service_desert_classification"] in ["Critical Desert", "Underserved"]
     assert hc_breakdown["gap_score"] > 60.0
@@ -361,9 +361,9 @@ def test_api_get_service_deserts():
     assert isinstance(deserts, list)
     assert len(deserts) > 0
 
-    # Highlands Valley healthcare must be in the desert list
+    # Highlands Valley / Vijay Nagar healthcare must be in the desert list
     highlands_hc = next(
-        (d for d in deserts if d["area_name"] == "Highlands Valley" and d["category_code"] == "healthcare"),
+        (d for d in deserts if d["area_name"] in ["Vijay Nagar", "Highlands Valley"] and d["category_code"] == "healthcare"),
         None,
     )
     assert highlands_hc is not None

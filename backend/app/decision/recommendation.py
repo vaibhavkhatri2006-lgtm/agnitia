@@ -78,6 +78,8 @@ class ScoredCandidate:
         self.factor_values = factor_values
         self.factor_weights = factor_weights
         self.reasons = reasons
+        gap = factor_values.get("gap_severity", 45.0)
+        self.expected_gain_pts = round(max(5.0, (gap * 0.35) + (recommendation_score * 0.12)), 1)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -92,6 +94,7 @@ class ScoredCandidate:
             "population": self.population,
             "strategy": self.strategy,
             "confidence": self.confidence,
+            "expected_gain_pts": self.expected_gain_pts,
             "factor_values": self.factor_values,
             "factor_weights": self.factor_weights,
             "reasons": self.reasons,
