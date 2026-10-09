@@ -1,7 +1,29 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --radius: 0.5rem;
+  --color-civic-950: #071529;
+  --color-civic-900: #0f2d59;
+  --color-civic-850: #143668;
+  --color-civic-800: #1b4582;
+  --color-civic-700: #255aa3;
+  --color-civic-600: #2563eb;
+  --color-civic-500: #3b82f6;
+  --color-civic-100: #eff6ff;
+  --color-civic-50: #f8faff;
+  
+  --color-surface-base: #ffffff;
+  --color-surface-warm: #fbfcfd;
+  --color-surface-muted: #f8fafc;
+  --color-surface-border: #e2e8f0;
+  --color-surface-hover: #f1f5f9;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
 @layer base {
   :root {
     --background: 0 0% 100%;

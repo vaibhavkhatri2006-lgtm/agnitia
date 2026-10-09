@@ -17,5 +17,15 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "registries": [
+    {
+      "name": "reactbits",
+      "type": "registry:ui",
+      "url": "https://pro.reactbits.dev/api/shadcn/starter",
+      "headers": {
+        "Authorization": "${REACTBITS_LICENSE_KEY}"
+      }
+    }
+  ]
 }
