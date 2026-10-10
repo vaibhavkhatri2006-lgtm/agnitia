@@ -1,11 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen, Sparkles } from 'lucide-react';
+import { useCivicScore } from '../../context/CivicScoreContext';
+import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen, Sparkles, Star } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AppLayout = () => {
   const { user, logout } = useAuth();
+  const { scoreState } = useCivicScore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,8 +21,9 @@ export const AppLayout = () => {
     { name: 'Civic Map', path: '/map', icon: MapIcon },
     { name: 'Scenario Lab', path: '/scenario-lab', icon: Sparkles },
     { name: 'Methodology', path: '/methodology', icon: BookOpen },
-    // Show 'Report Reality' only to citizens or community
-    ...(user?.role === 'Citizen' || user?.role === 'Community' ? [{ name: 'Report Reality', path: '/report', icon: ShieldAlert }] : []),
+    ...(user?.role === 'Citizen' || user?.role === 'Community'
+      ? [{ name: 'Report Reality', path: '/report', icon: ShieldAlert }]
+      : []),
   ];
 
   return (
@@ -37,17 +40,17 @@ export const AppLayout = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <nav className="hidden md:flex gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                    'flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                     location.pathname === item.path
-                      ? "bg-slate-100 text-blue-700"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      ? 'bg-slate-100 text-blue-700'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   )}
                 >
                   <item.icon className="w-4 h-4" />
@@ -56,14 +59,28 @@ export const AppLayout = () => {
               ))}
             </nav>
 
-            <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
+            <div className="h-6 w-px bg-slate-200 hidden md:block" />
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Civic Score live chip — shown for Citizen / Community */}
+              {(user?.role === 'Citizen' || user?.role === 'Community') && (
+                <Link
+                  to="/report"
+                  className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold shadow-sm hover:shadow-md transition-all"
+                  title="Your Civic Score"
+                >
+                  <Star className="w-3.5 h-3.5 text-yellow-300" />
+                  {scoreState.totalScore} pts
+                </Link>
+              )}
+
               <div className="flex flex-col items-end">
                 <span className="text-sm font-semibold text-slate-900">{user?.name}</span>
-                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{user?.role}</span>
+                <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                  {user?.role}
+                </span>
               </div>
-              
+
               <button
                 onClick={handleLogout}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
