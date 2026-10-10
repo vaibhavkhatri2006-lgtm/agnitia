@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, MicOff, Square, RotateCcw, Pencil, CheckCircle, AlertCircle, Waveform, AudioLines } from 'lucide-react';
+import { Mic, MicOff, Square, RotateCcw, Pencil, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface VoiceInputProps {
   transcript: string;
