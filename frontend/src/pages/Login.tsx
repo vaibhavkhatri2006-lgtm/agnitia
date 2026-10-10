@@ -442,39 +442,93 @@ export const Login = () => {
             </div>
           </form>
 
-          {/* Pre-Seeded SQL Accounts */}
+          {/* One-Click Guest Access */}
           <div className="mt-6 pt-5 border-t border-white/10">
             <p className="text-[11px] font-medium text-slate-400 mb-2.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-                Quick Fill Seeded SQL Test Accounts:
+                One-Click Guest Access:
               </span>
               <span className="text-[10px] text-slate-500">Instant Demo</span>
             </p>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => handleDemoAutofill('authority@example.com', 'Authority123!', 'Authority')}
-                className="px-2 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-400/20 text-[11px] text-blue-300 transition text-center truncate font-medium"
-                title="authority@example.com"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  const guestEmail = 'authority@example.com';
+                  const guestPass = 'Authority123!';
+                  const guestRole = 'Authority';
+                  setEmail(guestEmail);
+                  setPassword(guestPass);
+                  setRole(guestRole);
+                  setIsSubmitting(true);
+                  try {
+                    await login(guestEmail, guestPass, guestRole);
+                    setSuccessMessage('Logged in as Guest Planner! Redirecting...');
+                    setTimeout(() => navigate('/dashboard'), 700);
+                  } catch (err: any) {
+                    setErrorMessage(err.message || 'Login failed.');
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="px-2 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-400/20 text-[11px] text-blue-300 transition text-center truncate font-medium disabled:opacity-50"
+                title="Login as Guest Planner"
               >
-                Planner
+                Guest Planner
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoAutofill('admin@example.com', 'Admin123!', 'Admin')}
-                className="px-2 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-400/20 text-[11px] text-purple-300 transition text-center truncate font-medium"
-                title="admin@example.com"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  const guestEmail = 'admin@example.com';
+                  const guestPass = 'Admin123!';
+                  const guestRole = 'Admin';
+                  setEmail(guestEmail);
+                  setPassword(guestPass);
+                  setRole(guestRole);
+                  setIsSubmitting(true);
+                  try {
+                    await login(guestEmail, guestPass, guestRole);
+                    setSuccessMessage('Logged in as Guest Admin! Redirecting...');
+                    setTimeout(() => navigate('/dashboard'), 700);
+                  } catch (err: any) {
+                    setErrorMessage(err.message || 'Login failed.');
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="px-2 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-400/20 text-[11px] text-purple-300 transition text-center truncate font-medium disabled:opacity-50"
+                title="Login as Guest Admin"
               >
-                Admin
+                Guest Admin
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoAutofill('citizen@example.com', 'Citizen123!', 'Citizen')}
-                className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-slate-200 transition text-center truncate font-medium"
-                title="citizen@example.com"
+                disabled={isSubmitting}
+                onClick={async () => {
+                  const guestEmail = 'citizen@example.com';
+                  const guestPass = 'Citizen123!';
+                  const guestRole = 'Citizen';
+                  setEmail(guestEmail);
+                  setPassword(guestPass);
+                  setRole(guestRole);
+                  setIsSubmitting(true);
+                  try {
+                    await login(guestEmail, guestPass, guestRole);
+                    setSuccessMessage('Logged in as Guest Citizen! Redirecting...');
+                    setTimeout(() => navigate('/dashboard'), 700);
+                  } catch (err: any) {
+                    setErrorMessage(err.message || 'Login failed.');
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }}
+                className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-slate-200 transition text-center truncate font-medium disabled:opacity-50"
+                title="Login as Guest Citizen"
               >
-                Citizen
+                Guest Citizen
               </button>
             </div>
           </div>
