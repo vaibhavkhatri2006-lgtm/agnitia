@@ -24,30 +24,19 @@ function toFrontendRole(roleStr: string): Role {
   return 'Citizen';
 }
 
-// Resilient fetch helper that handles both Vite proxy and direct backend access
 async function postAuth(endpoint: string, body: any): Promise<Response> {
-  const tryFetch = async (url: string) => {
+  const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+  // If endpoint is relative, prepend the backendBase. Otherwise use it as is.
+  const url = endpoint.startsWith('/') ? `${backendBase}${endpoint}` : endpoint;
+  
+  try {
     return await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  };
-
-  try {
-    return await tryFetch(endpoint);
-  } catch {
-    // If relative endpoint fails (proxy issue or network error), fallback to direct backend host
-    if (endpoint.startsWith('/')) {
-      const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-      const directUrl = `${backendBase}${endpoint}`;
-      try {
-        return await tryFetch(directUrl);
-      } catch {
-        throw new Error(`Backend server is unreachable at ${backendBase}. Please ensure the backend is running.`);
-      }
-    }
-    throw new Error('Connection to authentication server failed. Please check backend connection.');
+  } catch (err) {
+    throw new Error(`Connection to authentication server failed. Please check if the backend at ${backendBase} is running and allows CORS.`);
   }
 }
 
@@ -74,16 +63,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('civicpulse_user');
   }, []);
 
-  // Validate stored session on application load
   useEffect(() => {
     const savedToken = localStorage.getItem('civicpulse_token');
     if (!savedToken) return;
 
     const verifyHeaders = { Authorization: `Bearer ${savedToken}` };
-    const backendBase = import.meta.env.VITE_API_BASE_URL || '';
-    const meUrl = backendBase ? `${backendBase}/auth/me` : '/auth/me';
+    const backendBase = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+    const meUrl = `${backendBase}/auth/me`;
+    
     fetch(meUrl, { headers: verifyHeaders })
-      .catch(() => fetch('http://127.0.0.1:8000/auth/me', { headers: verifyHeaders }))
       .then((res) => {
         if (res && res.ok) {
           return res.json().then((meData) => {
