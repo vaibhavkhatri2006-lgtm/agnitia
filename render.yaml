@@ -26,9 +26,9 @@ services:
           name: civicpulse-db
           property: connectionString
       - key: ALLOWED_ORIGINS
-        value: https://civicpulse-frontend.onrender.com
+        value: https://civicpulse-frontend-xbem.onrender.com
       - key: FRONTEND_URL
-        value: https://civicpulse-frontend.onrender.com
+        value: https://civicpulse-frontend-xbem.onrender.com
 
   # ─── Frontend: Vite/React Static Site ────────────────────────────────────────
   - type: web
