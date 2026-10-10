@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, Activity, BookOpen } from 'lucide-react';
+import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AppLayout = () => {
@@ -20,8 +20,6 @@ export const AppLayout = () => {
     { name: 'Methodology', path: '/methodology', icon: BookOpen },
     // Show 'Report Reality' only to citizens or community
     ...(user?.role === 'Citizen' || user?.role === 'Community' ? [{ name: 'Report Reality', path: '/report', icon: ShieldAlert }] : []),
-    // Show 'Scenario Lab' only to authority or admin
-    ...(user?.role === 'Authority' || user?.role === 'Admin' ? [{ name: 'Scenario Lab', path: '/scenario-lab', icon: Activity }] : []),
   ];
 
   return (

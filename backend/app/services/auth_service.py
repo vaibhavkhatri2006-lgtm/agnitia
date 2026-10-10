@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
 from app.models.user import User
-from app.core.security import verify_password, create_access_token
-from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.models.role import Role
+from app.core.security import verify_password, hash_password, create_access_token
+from app.schemas.auth import LoginRequest, RegisterRequest, ResetPasswordRequest, TokenResponse, UserResponse
 from app.config import settings
 
 
@@ -85,6 +86,119 @@ class AuthService:
             )
 
         return cls.create_token_for_user(user)
+
+    @classmethod
+    def register(cls, db: Session, register_req: RegisterRequest) -> TokenResponse:
+        """
+        Registers a new user in the SQL database, hashes the password with bcrypt,
+        assigns the role, and returns an access token with user details.
+        """
+        import time
+
+        email = register_req.email.strip().lower()
+        if not email or "@" not in email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A valid email address is required.",
+            )
+
+        existing = db.query(User).filter(User.email == email).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"An account with email '{email}' already exists in SQL database. Please log in.",
+            )
+
+        # Resolve role (citizen, community, authority, admin)
+        role_name = (register_req.role or "citizen").strip().lower()
+        role = db.query(Role).filter(Role.name == role_name).first()
+        if not role:
+            role = db.query(Role).filter(Role.name == "citizen").first()
+            if not role:
+                role = Role(name="citizen", description="Standard citizen user")
+                db.add(role)
+                db.flush()
+
+        username = register_req.username or email.split("@")[0]
+        # Ensure username uniqueness
+        existing_u = db.query(User).filter(User.username == username).first()
+        if existing_u:
+            username = f"{username}_{int(time.time())}"
+
+        pwd_hash = hash_password(register_req.password)
+        new_user = User(
+            email=email,
+            username=username,
+            password_hash=pwd_hash,
+            display_name=register_req.display_name or (email.split("@")[0].title()),
+            role_id=role.id,
+            is_active=True,
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return cls.create_token_for_user(new_user)
+
+    @classmethod
+    def reset_or_sync_password(cls, db: Session, req: ResetPasswordRequest) -> TokenResponse:
+        """
+        Updates the password for an existing account or creates a new one in the SQL database.
+        Securely hashes password with bcrypt, updates role if specified, and issues a JWT token.
+        """
+        import time
+
+        email = req.email.strip().lower()
+        if not email or "@" not in email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A valid email address is required.",
+            )
+
+        pwd_hash = hash_password(req.password)
+        user = db.query(User).filter(User.email == email).first()
+
+        # Resolve role if specified
+        target_role = None
+        if req.role:
+            role_name = req.role.strip().lower()
+            target_role = db.query(Role).filter(Role.name == role_name).first()
+
+        if user:
+            user.password_hash = pwd_hash
+            user.is_active = True
+            if target_role:
+                user.role_id = target_role.id
+            db.commit()
+            db.refresh(user)
+            return cls.create_token_for_user(user)
+
+        # User does not exist, create new user
+        if not target_role:
+            target_role = db.query(Role).filter(Role.name == "citizen").first()
+            if not target_role:
+                target_role = Role(name="citizen", description="Standard citizen user")
+                db.add(target_role)
+                db.flush()
+
+        username = email.split("@")[0]
+        existing_u = db.query(User).filter(User.username == username).first()
+        if existing_u:
+            username = f"{username}_{int(time.time())}"
+
+        new_user = User(
+            email=email,
+            username=username,
+            password_hash=pwd_hash,
+            display_name=email.split("@")[0].title(),
+            role_id=target_role.id,
+            is_active=True,
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+
+        return cls.create_token_for_user(new_user)
 
 
 auth_service = AuthService()

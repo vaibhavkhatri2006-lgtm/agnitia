@@ -8,6 +8,20 @@ class LoginRequest(BaseModel):
     password: str = Field(..., min_length=1, description="Account password", json_schema_extra={"example": "Citizen123!"})
 
 
+class RegisterRequest(BaseModel):
+    email: str = Field(..., description="User email address", json_schema_extra={"example": "user@gmail.com"})
+    password: str = Field(..., min_length=4, description="Account password", json_schema_extra={"example": "Password123!"})
+    role: Optional[str] = Field("citizen", description="Role name: citizen, community, authority, or admin")
+    username: Optional[str] = Field(None, description="Optional username")
+    display_name: Optional[str] = Field(None, description="Optional display name")
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(..., description="User email address", json_schema_extra={"example": "user@gmail.com"})
+    password: str = Field(..., min_length=4, description="New account password", json_schema_extra={"example": "NewPassword123!"})
+    role: Optional[str] = Field(None, description="Optional role to assign or update (e.g. citizen, authority, admin)")
+
+
 class RoleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

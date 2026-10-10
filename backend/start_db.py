@@ -13,8 +13,9 @@ from app.database import check_database_connection
 def main():
     print("============================================================")
     print("CivicPulse Database Starter & Connection Verifier")
-    print("============================================================")
-    print(f"Target Database URL: {settings.DATABASE_URL}")
+    from sqlalchemy.engine import make_url
+    safe_url = make_url(settings.DATABASE_URL).render_as_string(hide_password=True)
+    print(f"Target Database URL: {safe_url}")
     print("Attempting connection probe (SELECT 1)...")
 
     status = check_database_connection()

@@ -95,7 +95,7 @@ export const DataUnavailableState: React.FC<{
             onClick={() => onSelectScale('City')}
             className="flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition-colors"
           >
-            <span>City (Metro City)</span>
+            <span>City (Indore)</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>

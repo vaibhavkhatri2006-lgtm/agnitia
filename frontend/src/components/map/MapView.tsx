@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
   AlertTriangle,
+  AlertCircle,
   Sparkles,
   Layers,
   MapPin,
@@ -60,7 +61,7 @@ const CATEGORY_CONFIG: Record<
     bg: '#fee2e2',
     border: '#f87171',
     text: '#b91c1c',
-    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5v14"/><path d="M5 12h14"/></svg>`,
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5h5a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-5v5a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-5H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h5V4z"/></svg>`,
   },
   education: {
     label: 'Education',
@@ -68,7 +69,7 @@ const CATEGORY_CONFIG: Record<
     bg: '#dbeafe',
     border: '#60a5fa',
     text: '#1d4ed8',
-    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`,
   },
   transport: {
     label: 'Transport',
@@ -76,7 +77,7 @@ const CATEGORY_CONFIG: Record<
     bg: '#fef3c7',
     border: '#fbbf24',
     text: '#b45309',
-    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="16" height="16" x="4" y="3" rx="2"/><path d="M4 11h16"/><path d="M8 15h.01"/><path d="M16 15h.01"/><path d="m6 19-2 2"/><path d="m18 19 2 2"/></svg>`,
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="3" rx="3"/><path d="M4 11h16"/><circle cx="8" cy="15" r="1.5" fill="currentColor"/><circle cx="16" cy="15" r="1.5" fill="currentColor"/><path d="m6 19-1.5 2"/><path d="m18 19 1.5 2"/></svg>`,
   },
   water: {
     label: 'Water & Sanitation',
@@ -84,7 +85,7 @@ const CATEGORY_CONFIG: Record<
     bg: '#cffafe',
     border: '#22d3ee',
     text: '#0e7490',
-    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>`,
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
   },
   market: {
     label: 'Markets & Food',
@@ -92,17 +93,71 @@ const CATEGORY_CONFIG: Record<
     bg: '#d1fae5',
     border: '#34d399',
     text: '#047857',
-    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/><path d="M2 7h20"/></svg>`,
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`,
   },
 };
 
+// Robust Category Resolver with alias recognition
+function getCategoryConfig(categoryCode?: string, fallback = 'transport') {
+  if (!categoryCode) return CATEGORY_CONFIG[fallback.toLowerCase()] || CATEGORY_CONFIG.transport;
+  const code = categoryCode.toLowerCase().trim();
+  if (CATEGORY_CONFIG[code]) return CATEGORY_CONFIG[code];
+  if (
+    code.includes('transport') ||
+    code.includes('bus') ||
+    code.includes('transit') ||
+    code.includes('station') ||
+    code.includes('train') ||
+    code.includes('rail')
+  ) {
+    return CATEGORY_CONFIG.transport;
+  }
+  if (
+    code.includes('health') ||
+    code.includes('hospital') ||
+    code.includes('clinic') ||
+    code.includes('medic') ||
+    code.includes('doctor') ||
+    code.includes('pharmacy')
+  ) {
+    return CATEGORY_CONFIG.healthcare;
+  }
+  if (
+    code.includes('educat') ||
+    code.includes('school') ||
+    code.includes('college') ||
+    code.includes('univers') ||
+    code.includes('kindergarten')
+  ) {
+    return CATEGORY_CONFIG.education;
+  }
+  if (
+    code.includes('water') ||
+    code.includes('sanitat') ||
+    code.includes('tap') ||
+    code.includes('well')
+  ) {
+    return CATEGORY_CONFIG.water;
+  }
+  if (
+    code.includes('market') ||
+    code.includes('food') ||
+    code.includes('shop') ||
+    code.includes('grocery') ||
+    code.includes('mandi')
+  ) {
+    return CATEGORY_CONFIG.market;
+  }
+  return CATEGORY_CONFIG[fallback.toLowerCase()] || CATEGORY_CONFIG.healthcare;
+}
+
 // Create custom pin icons with Leaflet L.divIcon
-function createCategoryPinIcon(categoryCode: string, isOverpass = false) {
-  const cfg = CATEGORY_CONFIG[categoryCode.toLowerCase()] || CATEGORY_CONFIG.healthcare;
+function createCategoryPinIcon(categoryCode?: string, isOverpass = false, fallbackCategory = 'transport') {
+  const cfg = getCategoryConfig(categoryCode, fallbackCategory);
   const badgeHtml = `
     <div style="
+      position: relative;
       background-color: ${cfg.color};
-      color: white;
       width: 28px;
       height: 28px;
       border-radius: 50% 50% 50% 0;
@@ -110,24 +165,35 @@ function createCategoryPinIcon(categoryCode: string, isOverpass = false) {
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-      border: 2px solid white;
-      transition: transform 0.15s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      border: 2px solid #ffffff;
       cursor: pointer;
     ">
-      <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
-        ${cfg.icon}
+      <div style="
+        width: 17px;
+        height: 17px;
+        border-radius: 50%;
+        background-color: #ffffff;
+        transform: rotate(45deg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+      ">
+        <div style="color: ${cfg.color}; display: flex; align-items: center; justify-content: center;">
+          ${cfg.icon}
+        </div>
       </div>
     </div>
     ${
       isOverpass
-        ? `<div style="position: absolute; bottom: -4px; right: -4px; background: #6366f1; color: white; border-radius: 50%; width: 12px; height: 12px; font-size: 8px; font-weight: bold; display: flex; align-items: center; justify-content: center; border: 1px solid white;">OSM</div>`
+        ? `<div style="position: absolute; bottom: -3px; right: -3px; background: #4f46e5; color: white; border-radius: 9999px; padding: 1px 3.5px; font-size: 7.5px; font-weight: 800; border: 1.5px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.35); line-height: 1; letter-spacing: -0.2px;">OSM</div>`
         : ''
     }
   `;
 
   return L.divIcon({
-    html: `<div style="position: relative; width: 28px; height: 28px;">${badgeHtml}</div>`,
+    html: `<div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">${badgeHtml}</div>`,
     className: 'custom-leaflet-pin',
     iconSize: [28, 28],
     iconAnchor: [14, 28],
@@ -187,6 +253,128 @@ function createRecommendationPinIcon(rank: number) {
   });
 }
 
+function capitalize(s: string): string {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export interface OsmProblemItem {
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium';
+}
+
+export interface OsmLocalityProblemReport {
+  localityId: number;
+  localityName: string;
+  category: string;
+  categoryLabel: string;
+  facilityCount: number;
+  hasNoData: boolean;
+  totalCityCount?: number;
+  problems: OsmProblemItem[];
+  queriedAt: Date;
+}
+
+function generateOsmProblems(
+  locality: LocalityProperties,
+  category: string,
+  facilityCount: number
+): OsmProblemItem[] {
+  const problems: OsmProblemItem[] = [];
+  const cat = category.toLowerCase();
+  const pop = locality.population || 40000;
+  const areaName = locality.name.split('/')[0].trim();
+
+  if (facilityCount === 0) {
+    if (cat === 'water' || cat === 'all') {
+      problems.push({
+        title: 'Zero Public Drinking Water Points',
+        description: `OpenStreetMap records 0 mapped drinking water points, public taps, or municipal dispensers in ${areaName}. All ${pop.toLocaleString()} residents rely entirely on private borewells or municipal tankers.`,
+        severity: 'critical',
+      });
+    }
+    if (cat === 'healthcare' || cat === 'all') {
+      problems.push({
+        title: 'Primary Healthcare Accessibility Void',
+        description: `0 operational clinics or primary health dispensaries recorded in ${areaName} on OpenStreetMap. Emergency lag to regional center (${locality.nearest_service || 'MY Hospital'}, est. ${locality.travel_time || '15 mins'}).`,
+        severity: 'critical',
+      });
+    }
+    if (cat === 'education' || cat === 'all') {
+      problems.push({
+        title: 'Public Education Deficit',
+        description: `No public schools or educational amenities recorded in ${areaName} on OpenStreetMap. Students face extended transit commutes to adjacent wards.`,
+        severity: 'high',
+      });
+    }
+    if (cat === 'transport' || cat === 'all') {
+      problems.push({
+        title: 'Public Transit Blindspot',
+        description: `0 public transit halts or bus boarding points mapped in ${areaName}. Last-mile civic connectivity is severely compromised.`,
+        severity: 'high',
+      });
+    }
+    if (cat === 'market' || cat === 'all') {
+      problems.push({
+        title: 'Fresh Produce Food Desert',
+        description: `Zero municipal sabzi mandis or daily essential food markets mapped within ${areaName}.`,
+        severity: 'medium',
+      });
+    }
+  } else {
+    // Facilities found -> calculate per-capita deficit
+    const perCapita = Math.round(pop / facilityCount);
+    if (cat === 'healthcare' || cat === 'all') {
+      if (facilityCount < 3) {
+        problems.push({
+          title: 'High Population-to-Clinic Ratio',
+          description: `Only ${facilityCount} medical facility for ${pop.toLocaleString()} residents (~${perCapita.toLocaleString()} residents per facility vs WHO standard of 1 per 10,000).`,
+          severity: 'high',
+        });
+      }
+    }
+    if (cat === 'water' || cat === 'all') {
+      if (facilityCount < 3) {
+        problems.push({
+          title: 'Low Public Water Point Density',
+          description: `Only ${facilityCount} public water point mapped for ${pop.toLocaleString()} residents. Heavy load on existing infrastructure.`,
+          severity: 'high',
+        });
+      }
+    }
+    if (cat === 'transport' || cat === 'all') {
+      if (facilityCount < 4) {
+        problems.push({
+          title: 'Transit Stop Capacity Bottleneck',
+          description: `Only ${facilityCount} transit stops mapped. Feeder buses experience overcrowding during peak morning hours.`,
+          severity: 'medium',
+        });
+      }
+    }
+    if (cat === 'education' || cat === 'all') {
+      if (facilityCount < 3) {
+        problems.push({
+          title: 'Classroom Capacity Deficit',
+          description: `Only ${facilityCount} educational facility for ${pop.toLocaleString()} residents. High student-to-school ratio.`,
+          severity: 'medium',
+        });
+      }
+    }
+  }
+
+  // Include locality's specific municipal gap if not already covered
+  if (locality.main_gap && !problems.some((p) => p.description.includes(locality.main_gap!))) {
+    problems.push({
+      title: 'Municipal Deficit',
+      description: locality.main_gap,
+      severity: locality.gap_score && locality.gap_score > 35 ? 'critical' : 'high',
+    });
+  }
+
+  return problems;
+}
+
 // Controller component to smoothly fly/pan to selected localities or cities
 function MapViewController({ targetCenter, targetZoom }: { targetCenter?: [number, number]; targetZoom?: number }) {
   const map = useMap();
@@ -209,12 +397,6 @@ export interface MapViewProps {
   initialCategory?: string;
   initialCity?: 'indore' | 'bengaluru';
 }
-
-const INITIAL_DATA_STATUS: DataFetchStatus = {
-  source: 'demo',
-  isLive: false,
-  lastUpdated: new Date(0),
-};
 
 export const MapView: React.FC<MapViewProps> = ({
   center = METRO_CITY_CENTER,
@@ -246,13 +428,14 @@ export const MapView: React.FC<MapViewProps> = ({
   const [reports, setReports] = useState<CommunityReportItem[]>(() => DETERMINISTIC_REPORTS);
   const [recommendations, setRecommendations] = useState<RecommendationCandidateItem[]>(() => DETERMINISTIC_RECOMMENDATIONS);
   const [overpassFacilities, setOverpassFacilities] = useState<ServiceFacilityProperties[]>([]);
+  const [osmProblemReport, setOsmProblemReport] = useState<OsmLocalityProblemReport | null>(null);
 
   // Telemetry & UI State
-  const [dataStatus, setDataStatus] = useState<DataFetchStatus>({
+  const [dataStatus, setDataStatus] = useState<DataFetchStatus>(() => ({
     source: 'live',
     isLive: true,
     lastUpdated: new Date(),
-  });
+  }));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isQueryingOverpass, setIsQueryingOverpass] = useState<boolean>(false);
   const [osmNotice, setOsmNotice] = useState<{
@@ -301,24 +484,69 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, [selectedCategory, selectedCity]);
 
-  // Synchronize external selection and pan map to locality
+  // Synchronize external selection, filter OSM pins to boundary, and pan map to locality
   const handleSelectLocality = useCallback(
-    (loc: LocalityProperties | null) => {
+    (loc: LocalityProperties | null, geomOverride?: any) => {
       setSelectedLocality(loc);
-      if (loc && (loc as any).geometry && (loc as any).geometry.type === 'Polygon') {
-        const coords = (loc as any).geometry.coordinates[0];
-        if (coords && coords.length > 0) {
+      if (loc) {
+        let geom = geomOverride || (loc as any).geometry;
+        if (!geom && areas?.features) {
+          const match = areas.features.find((f: any) => (f.properties?.id ?? f.id) === loc.id);
+          geom = match?.geometry;
+        }
+
+        let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+        if (geom && geom.type === 'Polygon' && geom.coordinates?.[0]?.length > 0) {
+          const coords = geom.coordinates[0];
+          for (const [cLon, cLat] of coords) {
+            if (cLat < minLat) minLat = cLat;
+            if (cLat > maxLat) maxLat = cLat;
+            if (cLon < minLon) minLon = cLon;
+            if (cLon > maxLon) maxLon = cLon;
+          }
           const avgLon = coords.reduce((acc: number, c: number[]) => acc + c[0], 0) / coords.length;
           const avgLat = coords.reduce((acc: number, c: number[]) => acc + c[1], 0) / coords.length;
           setMapTargetCenter([avgLat, avgLon]);
-          setMapTargetZoom(14);
+          setMapTargetZoom(15);
         }
+
+        // Filter existing OSM facilities so pins from distant neighbourhoods don't bleed in
+        setOverpassFacilities((prev) => {
+          if (prev.length === 0 || minLat === Infinity) return [];
+          const buffer = 0.003;
+          return prev.filter(
+            (f) =>
+              f.latitude >= minLat - buffer &&
+              f.latitude <= maxLat + buffer &&
+              f.longitude >= minLon - buffer &&
+              f.longitude <= maxLon + buffer
+          );
+        });
+
+        // Set baseline problem report for selected locality
+        const baselineProblems = generateOsmProblems(loc, selectedCategory, 0);
+        setOsmProblemReport({
+          localityId: loc.id,
+          localityName: loc.name,
+          category: selectedCategory,
+          categoryLabel: selectedCategory === 'all' ? 'Civic' : capitalize(selectedCategory),
+          facilityCount: 0,
+          hasNoData: true,
+          problems: baselineProblems,
+          queriedAt: new Date(),
+        });
+      } else {
+        const city = CITIES[selectedCity] || CITIES.indore;
+        setMapTargetCenter(city.center);
+        setMapTargetZoom(city.zoom);
+        setOsmProblemReport(null);
       }
+
       if (onLocalitySelect) {
         onLocalitySelect(loc);
       }
     },
-    [onLocalitySelect]
+    [areas, selectedCity, selectedCategory, onLocalitySelect]
   );
 
   // Switch City Context
@@ -327,6 +555,7 @@ export const MapView: React.FC<MapViewProps> = ({
     setSelectedLocality(null);
     setOverpassFacilities([]);
     setOsmNotice(null);
+    setOsmProblemReport(null);
     const city = CITIES[cityId];
     if (city) {
       setMapTargetCenter(city.center);
@@ -339,59 +568,119 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   // Execute Overpass search for selected locality or bounding box
-  const handleQueryOverpass = async (targetLocality?: LocalityProperties | null) => {
+  const handleQueryOverpass = async (
+    targetLocality?: LocalityProperties | null,
+    categoryOverride?: string
+  ) => {
     setIsQueryingOverpass(true);
+    setOverpassFacilities([]);
     const target = targetLocality || selectedLocality;
+    const catToQuery = categoryOverride || selectedCategory;
     const city = CITIES[selectedCity] || CITIES.indore;
-    const locName = target ? target.name : city.name;
+    const locName = target
+      ? target.name.split('/')[0].split(',')[0].trim()
+      : selectedCity === 'indore'
+      ? 'Indore'
+      : city.name;
+    const catLabel = catToQuery === 'all' ? 'Civic' : capitalize(catToQuery);
 
     setOsmNotice({
       type: 'loading',
-      message: `Querying OpenStreetMap Overpass provider for ${selectedCategory === 'all' ? 'civic' : selectedCategory} amenities in ${locName}...`,
+      message: `Querying OpenStreetMap Overpass provider for ${catLabel} amenities in ${locName}...`,
     });
+
+    // Compute exact bounding box and centroid if a locality is selected
+    let targetBbox: [number, number, number, number] | undefined = undefined;
+    let centerLat: number | undefined = undefined;
+    let centerLon: number | undefined = undefined;
+
+    if (target) {
+      const feat = areas?.features?.find((f: any) => (f.properties?.id ?? f.id) === target.id);
+      if (feat && feat.geometry && feat.geometry.coordinates && feat.geometry.coordinates[0]?.length > 0) {
+        const coords: [number, number][] = feat.geometry.coordinates[0];
+        let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+        for (const [cLon, cLat] of coords) {
+          if (cLat < minLat) minLat = cLat;
+          if (cLat > maxLat) maxLat = cLat;
+          if (cLon < minLon) minLon = cLon;
+          if (cLon > maxLon) maxLon = cLon;
+        }
+        if (minLat !== Infinity) {
+          targetBbox = [minLat, minLon, maxLat, maxLon];
+          centerLat = (minLat + maxLat) / 2;
+          centerLon = (minLon + maxLon) / 2;
+        }
+      }
+    }
 
     try {
       const res = await queryOverpassServices({
-        localityName: target ? target.name : city.name,
+        localityName: locName,
         areaId: target ? target.id : undefined,
-        bbox: target ? undefined : city.bbox,
-        category: selectedCategory,
+        bbox: target ? targetBbox : city.bbox,
+        centerLat,
+        centerLon,
+        radiusMeters: 1800,
+        category: catToQuery,
         forceLive: true,
         cityId: selectedCity,
       });
 
       setIsQueryingOverpass(false);
 
-      if (res.status === 'empty' || res.facilities.length === 0) {
-        setOverpassFacilities([]);
-        setOsmNotice({
-          type: 'empty',
-          message: `No ${selectedCategory === 'all' ? 'civic' : selectedCategory} facilities found on OpenStreetMap for ${locName}.`,
+      if (target) {
+        // Specific locality query
+        const count = res.facilities.length;
+        const problems = generateOsmProblems(target, catToQuery, count);
+
+        setOsmProblemReport({
+          localityId: target.id,
+          localityName: target.name,
+          category: catToQuery,
+          categoryLabel: catLabel,
+          facilityCount: count,
+          hasNoData: count === 0,
+          totalCityCount: res.totalCount,
+          problems,
+          queriedAt: new Date(),
         });
-      } else if (res.status === 'timeout') {
-        setOverpassFacilities(res.facilities);
-        setOsmNotice({
-          type: 'timeout',
-          message: res.warning || `Overpass query timed out for ${locName}. Showing deterministic local fallback data.`,
-        });
-      } else if (res.status === 'error') {
-        setOverpassFacilities(res.facilities);
-        setOsmNotice({
-          type: 'error',
-          message: res.warning || res.error || `Overpass service encountered an issue. Preserving deterministic local data.`,
-        });
+
+        if (count === 0) {
+          setOverpassFacilities([]);
+          setOsmNotice({
+            type: 'empty',
+            message: `⚠️ No ${catLabel} facilities found in ${target.name} on OpenStreetMap. Zero mapped public amenities exist within this boundary.`,
+          });
+        } else {
+          setOverpassFacilities(res.facilities);
+          setOsmNotice({
+            type: 'success',
+            message: `Retrieved ${count} ${catLabel} facilities in ${target.name} from OpenStreetMap (${res.cached ? 'from cache' : 'fresh Overpass query'}).`,
+          });
+        }
       } else {
+        // Whole city query (smooth rendering with representative sampling)
         setOverpassFacilities(res.facilities);
-        setOsmNotice({
-          type: 'success',
-          message: `Retrieved ${res.facilities.length} ${selectedCategory === 'all' ? 'civic' : selectedCategory} facilities from OpenStreetMap (${res.cached ? 'from cache' : 'fresh Overpass query'}).`,
-        });
+        setOsmProblemReport(null);
+
+        const total = res.totalCount || res.facilities.length;
+        if (res.isCapped) {
+          setOsmNotice({
+            type: 'success',
+            message: `Retrieved ${total.toLocaleString()} ${catLabel} facilities from OpenStreetMap across ${city.name}. Displaying top ${res.facilities.length} distributed facilities for smooth 60fps rendering. Select a locality to inspect all local data.`,
+          });
+        } else {
+          setOsmNotice({
+            type: 'success',
+            message: `Retrieved ${res.facilities.length} ${catLabel} facilities from OpenStreetMap (${res.cached ? 'from cache' : 'fresh Overpass query'}).`,
+          });
+        }
       }
     } catch (err: any) {
       setIsQueryingOverpass(false);
       setOsmNotice({
         type: 'error',
-        message: `OpenStreetMap query failed: ${err.message}. Operating in DEMO_MODE.`,
+        message: `OpenStreetMap query failed: ${err.message}. Preserving deterministic local data.`,
       });
     }
   };
@@ -400,7 +689,6 @@ export const MapView: React.FC<MapViewProps> = ({
   const getLocalityStyle = useCallback(
     (feature: any) => {
       const props = feature?.properties as LocalityProperties;
-      const isSelected = selectedLocality?.id === props?.id;
 
       if (activeLayer === 'accessibility') {
         const score = props?.accessibility_score ?? 50;
@@ -419,10 +707,10 @@ export const MapView: React.FC<MapViewProps> = ({
         }
 
         return {
-          color: isSelected ? '#1e293b' : strokeColor,
-          weight: isSelected ? 3.5 : 1.5,
+          color: strokeColor,
+          weight: 3.5,
           fillColor,
-          fillOpacity: isSelected ? 0.45 : 0.25,
+          fillOpacity: 0.35,
         };
       }
 
@@ -443,23 +731,22 @@ export const MapView: React.FC<MapViewProps> = ({
         }
 
         return {
-          color: isSelected ? '#1e293b' : strokeColor,
-          weight: isSelected ? 3.5 : 1.5,
+          color: strokeColor,
+          weight: 3.5,
           fillColor,
-          fillOpacity: isSelected ? 0.45 : 0.25,
+          fillOpacity: 0.35,
         };
       }
 
-      // Default civic styling
+      // Default high-contrast civic highlight for selected area
       return {
-        color: isSelected ? '#2563eb' : '#64748b',
-        weight: isSelected ? 3 : 1.5,
-        fillColor: isSelected ? '#3b82f6' : '#94a3b8',
-        fillOpacity: isSelected ? 0.25 : 0.1,
-        dashArray: isSelected ? undefined : '3, 4',
+        color: '#1d4ed8',
+        weight: 3.5,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.3,
       };
     },
-    [activeLayer, selectedLocality]
+    [activeLayer]
   );
 
   // GeoJSON feature interactions (hover, click)
@@ -467,12 +754,13 @@ export const MapView: React.FC<MapViewProps> = ({
     (feature: any, layer: L.Layer) => {
       const props = feature.properties as LocalityProperties;
       layer.on({
-        click: () => {
-          handleSelectLocality(props);
+        click: (e) => {
+          L.DomEvent.stopPropagation(e);
+          handleSelectLocality(props, feature.geometry);
         },
         mouseover: (e) => {
           const l = e.target;
-          l.setStyle({ fillOpacity: 0.5 });
+          l.setStyle({ fillOpacity: 0.55, weight: 3.5 });
         },
         mouseout: (e) => {
           const l = e.target;
@@ -482,20 +770,63 @@ export const MapView: React.FC<MapViewProps> = ({
 
       // Tooltip for quick identification
       layer.bindTooltip(
-        `<strong>${props.name}</strong><br/>Pop: ${props.population.toLocaleString()}${
-          props.accessibility_score ? `<br/>Access Score: ${props.accessibility_score}/100` : ''
-        }`,
+        `<div style="font-family: inherit; font-size: 11px; padding: 2px;">
+           <strong style="color: #0f172a; font-size: 12px;">${props.name}</strong><br/>
+           <span style="color: #64748b;">Population:</span> <strong>${props.population ? props.population.toLocaleString() : 'N/A'}</strong><br/>
+           ${props.accessibility_score != null ? `<span style="color: #64748b;">Access:</span> <strong>${props.accessibility_score}/100</strong><br/>` : ''}
+           ${props.gap_score != null ? `<span style="color: #ef4444;">Gap:</span> <strong>${props.gap_score}%</strong><br/>` : ''}
+           <span style="color: #2563eb; font-weight: 600; display: inline-block; margin-top: 3px;">👉 Click to focus & inspect area</span>
+         </div>`,
         { sticky: true, className: 'civic-map-tooltip' }
       );
     },
     [getLocalityStyle, handleSelectLocality]
   );
 
-  // Filter facilities based on selected category
+  // Filter facilities based on selected category and selected locality boundary
   const displayedServices = useMemo(() => {
-    const list = selectedCategory === 'all' ? services : services.filter((s) => s.category_code === selectedCategory);
+    let list = selectedCategory === 'all' ? services : services.filter((s) => s.category_code === selectedCategory);
+
+    if (selectedLocality) {
+      const feat = areas?.features?.find((f: any) => (f.properties?.id ?? f.id) === selectedLocality.id);
+      if (feat && feat.geometry && feat.geometry.coordinates?.[0]?.length > 0) {
+        const coords = feat.geometry.coordinates[0];
+        let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+        for (const [cLon, cLat] of coords) {
+          if (cLat < minLat) minLat = cLat;
+          if (cLat > maxLat) maxLat = cLat;
+          if (cLon < minLon) minLon = cLon;
+          if (cLon > maxLon) maxLon = cLon;
+        }
+        if (minLat !== Infinity) {
+          const buffer = 0.003;
+          list = list.filter(
+            (s) =>
+              s.latitude >= minLat - buffer &&
+              s.latitude <= maxLat + buffer &&
+              s.longitude >= minLon - buffer &&
+              s.longitude <= maxLon + buffer
+          );
+        }
+      }
+    }
+
     return list;
-  }, [services, selectedCategory]);
+  }, [services, selectedCategory, selectedLocality, areas]);
+
+  // Render boundary ONLY when user has selected an area (do NOT show all areas by default)
+  const activeAreasGeoJson = useMemo(() => {
+    if (!areas || !selectedLocality) {
+      return null;
+    }
+    return {
+      type: 'FeatureCollection',
+      features: areas.features.filter((f: any) => {
+        const featId = f.properties?.id ?? f.id;
+        return String(featId) === String(selectedLocality.id);
+      }),
+    };
+  }, [areas, selectedLocality]);
 
   return (
     <div className={`relative rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-50 flex flex-col ${className}`}>
@@ -559,7 +890,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </div>
         </div>
 
-        {/* City Focus & Category Filter & Overpass OSM Search */}
+        {/* City Focus, Area Selection, Category Filter & Overpass OSM Search */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* City Focus Dropdown */}
           <div className="flex items-center gap-1.5 bg-blue-50/80 border border-blue-200/80 rounded-lg px-2.5 py-1 text-xs shadow-2xs">
@@ -575,34 +906,145 @@ export const MapView: React.FC<MapViewProps> = ({
             </select>
           </div>
 
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="text-xs font-semibold bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 shadow-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
-          >
-            <option value="all">All Service Types</option>
-            <option value="healthcare">Healthcare (Clinics/Hospitals)</option>
-            <option value="education">Education (Schools/Colleges)</option>
-            <option value="transport">Transport (Hubs/Stops)</option>
-            <option value="water">Water & Sanitation</option>
-            <option value="market">Essential Food Markets</option>
-          </select>
+          {/* Area / Locality Selector Dropdown */}
+          <div className="flex items-center gap-1.5 bg-blue-50/90 border border-blue-200 rounded-lg px-2.5 py-1 text-xs shadow-2xs">
+            <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+            <select
+              value={selectedLocality ? String(selectedLocality.id) : ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  handleSelectLocality(null);
+                } else {
+                  const feat = areas?.features?.find((f: any) => String(f.properties?.id ?? f.id) === val);
+                  if (feat) {
+                    handleSelectLocality(feat.properties, feat.geometry);
+                  }
+                }
+              }}
+              className="bg-transparent text-xs font-bold text-blue-950 outline-none cursor-pointer max-w-[210px]"
+              title="Select a specific area or neighbourhood to focus on"
+            >
+              <option value="">📍 Select an Area / Locality...</option>
+              {areas?.features?.map((f: any) => (
+                <option key={f.properties?.id ?? f.id} value={String(f.properties?.id ?? f.id)}>
+                  {f.properties?.name || `Area #${f.id}`}
+                </option>
+              ))}
+            </select>
+            {selectedLocality && (
+              <button
+                onClick={() => handleSelectLocality(null)}
+                className="text-blue-500 hover:text-blue-800 font-bold ml-1 text-xs px-1"
+                title="Clear locality selection"
+              >
+                ×
+              </button>
+            )}
+          </div>
 
-          {/* Overpass Query Trigger */}
+          {/* Category Selector with Live Icon Badge */}
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
+            <span
+              className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 text-white shadow-xs"
+              style={{ backgroundColor: getCategoryConfig(selectedCategory).color }}
+              dangerouslySetInnerHTML={{ __html: getCategoryConfig(selectedCategory).icon }}
+            />
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                const newCat = e.target.value;
+                const hadExistingOsm = overpassFacilities.length > 0;
+                setSelectedCategory(newCat);
+                setOverpassFacilities([]);
+                setOsmNotice(null);
+                if (hadExistingOsm) {
+                  handleQueryOverpass(selectedLocality, newCat);
+                }
+              }}
+              className="text-xs font-semibold bg-transparent text-slate-700 focus:outline-none cursor-pointer"
+            >
+              <option value="all">🌐 All Service Types</option>
+              <option value="healthcare">🏥 Healthcare (Clinics/Hospitals)</option>
+              <option value="education">🎓 Education (Schools/Colleges)</option>
+              <option value="transport">🚌 Transport (Hubs/Stops)</option>
+              <option value="water">💧 Water & Sanitation</option>
+              <option value="market">🛒 Essential Food Markets</option>
+            </select>
+          </div>
+
+          {/* Overpass Query Trigger with Category-Matched Icon & Theme */}
           <button
             onClick={() => handleQueryOverpass()}
             disabled={isQueryingOverpass}
-            title="Query OpenStreetMap Overpass for live amenities in area"
-            className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+            title={
+              selectedLocality
+                ? `Query live OpenStreetMap amenities for ${selectedLocality.name}`
+                : `Query live OpenStreetMap amenities for ${CITIES[selectedCity]?.name || 'city'}`
+            }
+            className="flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50 cursor-pointer hover:brightness-105 active:scale-95"
+            style={{
+              backgroundColor:
+                selectedCategory !== 'all'
+                  ? getCategoryConfig(selectedCategory).color
+                  : '#4f46e5',
+            }}
           >
             {isQueryingOverpass ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
             ) : (
-              <Search className="w-3.5 h-3.5 text-indigo-600" />
+              <span
+                className="w-3.5 h-3.5 flex items-center justify-center text-white shrink-0"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    selectedCategory !== 'all'
+                      ? getCategoryConfig(selectedCategory).icon
+                      : `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>`,
+                }}
+              />
             )}
-            <span>Query OSM</span>
+            <span>
+              {isQueryingOverpass
+                ? 'Querying OSM...'
+                : selectedLocality
+                ? `Query OSM ${selectedCategory !== 'all' ? capitalize(selectedCategory) : ''} (${selectedLocality.name.split('/')[0].trim()})`
+                : `Query OSM ${selectedCategory !== 'all' ? capitalize(selectedCategory) : ''}`}
+            </span>
           </button>
         </div>
+      </div>
+
+      {/* Quick Locality Selector Pills Bar */}
+      <div className="bg-slate-50/95 backdrop-blur-xs px-4 py-1.5 border-b border-slate-200/80 flex items-center gap-2 overflow-x-auto text-[11px] z-10">
+        <span className="text-slate-500 font-semibold shrink-0 flex items-center gap-1">
+          <MapPin className="w-3 h-3 text-slate-400" />
+          Choose Locality:
+        </span>
+        {areas?.features?.map((f: any) => {
+          const isSelected = selectedLocality && String(selectedLocality.id) === String(f.properties?.id ?? f.id);
+          return (
+            <button
+              key={`pill-${f.properties?.id ?? f.id}`}
+              onClick={() => handleSelectLocality(f.properties, f.geometry)}
+              className={`px-3 py-1 rounded-full font-medium shrink-0 transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-blue-600 text-white shadow-xs font-semibold'
+                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              {f.properties?.name?.split('/')[0]?.trim()}
+            </button>
+          );
+        })}
+        {selectedLocality && (
+          <button
+            onClick={() => handleSelectLocality(null)}
+            className="text-blue-600 hover:text-blue-800 font-semibold text-[11px] ml-auto shrink-0 flex items-center gap-0.5 cursor-pointer"
+          >
+            <span>Reset to Whole City</span>
+            <span className="font-bold">×</span>
+          </button>
+        )}
       </div>
 
       {/* Main Map Canvas */}
@@ -651,11 +1093,11 @@ export const MapView: React.FC<MapViewProps> = ({
 
           <MapViewController targetCenter={mapTargetCenter} targetZoom={mapTargetZoom} />
 
-          {/* Locality Boundaries Layer */}
-          {areas && (
+          {/* Locality Boundary - Render ONLY for the selected area */}
+          {activeAreasGeoJson && (
             <GeoJSON
-              key={`areas-${activeLayer}-${selectedLocality?.id || 'none'}`}
-              data={areas as any}
+              key={`selected-area-${selectedLocality?.id}`}
+              data={activeAreasGeoJson as any}
               style={getLocalityStyle}
               onEachFeature={onEachFeature}
             />
@@ -664,11 +1106,15 @@ export const MapView: React.FC<MapViewProps> = ({
           {/* Service Facilities Markers */}
           {(activeLayer === 'services' || activeLayer === 'accessibility' || activeLayer === 'gap') && (
             <>
-              {displayedServices.map((facility) => (
+              {displayedServices.map((facility, idx) => (
                 <Marker
-                  key={`srv-${facility.id}`}
+                  key={`srv-${facility.id ?? idx}-${facility.category_code}-${selectedCategory}`}
                   position={[facility.latitude, facility.longitude]}
-                  icon={createCategoryPinIcon(facility.category_code)}
+                  icon={createCategoryPinIcon(
+                    facility.category_code,
+                    false,
+                    selectedCategory !== 'all' ? selectedCategory : 'healthcare'
+                  )}
                 >
                   <Popup className="civic-custom-popup">
                     <div className="font-sans min-w-[220px] p-1">
@@ -741,32 +1187,57 @@ export const MapView: React.FC<MapViewProps> = ({
               ))}
 
               {/* Overpass Live Imported Amenities */}
-              {overpassFacilities.map((facility) => (
-                <Marker
-                  key={`osm-${facility.id}`}
-                  position={[facility.latitude, facility.longitude]}
-                  icon={createCategoryPinIcon(facility.category_code, true)}
-                >
-                  <Popup className="civic-custom-popup">
-                    <div className="font-sans min-w-[230px] p-1">
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2">
-                        <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded uppercase tracking-wider">
-                          {facility.category_name}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            facility.is_demo_data
-                              ? 'bg-amber-50 text-amber-800'
-                              : 'bg-indigo-100 text-indigo-800'
-                          }`}
-                        >
-                          {facility.is_demo_data ? 'Demo Fallback' : 'OSM Live'}
-                        </span>
-                      </div>
+              {overpassFacilities
+                .filter((facility) => {
+                  if (selectedCategory === 'all') return true;
+                  const cat = (facility.category_code || '').toLowerCase();
+                  const sel = selectedCategory.toLowerCase();
+                  if (!cat) return true;
+                  return cat === sel || cat.includes(sel) || sel.includes(cat);
+                })
+                .map((facility, idx) => {
+                  const effectiveCategory =
+                    (selectedCategory !== 'all' ? selectedCategory : facility.category_code) || 'transport';
+                  const cfg = getCategoryConfig(effectiveCategory);
+                  const displayCategoryName = (
+                    selectedCategory !== 'all'
+                      ? selectedCategory
+                      : facility.category_name || facility.category_code || 'transport'
+                  ).toUpperCase();
 
-                      <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">
-                        {facility.name}
-                      </h4>
+                  return (
+                    <Marker
+                      key={`osm-${facility.id ?? idx}-${effectiveCategory}-${selectedCategory}`}
+                      position={[facility.latitude, facility.longitude]}
+                      icon={createCategoryPinIcon(
+                        effectiveCategory,
+                        true,
+                        selectedCategory !== 'all' ? selectedCategory : 'transport'
+                      )}
+                    >
+                      <Popup className="civic-custom-popup">
+                        <div className="font-sans min-w-[230px] p-1">
+                          <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-2 mb-2">
+                            <span
+                              className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider"
+                              style={{ backgroundColor: cfg.bg, color: cfg.text }}
+                            >
+                              {displayCategoryName}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                facility.is_demo_data
+                                  ? 'bg-amber-50 text-amber-800'
+                                  : 'bg-indigo-100 text-indigo-800'
+                              }`}
+                            >
+                              {facility.is_demo_data ? 'Demo Fallback' : 'OSM Live'}
+                            </span>
+                          </div>
+
+                          <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">
+                            {facility.name}
+                          </h4>
 
                       <div className="text-[11px] text-slate-500 space-y-1 mb-2">
                         <p className="flex items-center gap-1">
@@ -817,7 +1288,8 @@ export const MapView: React.FC<MapViewProps> = ({
                     </div>
                   </Popup>
                 </Marker>
-              ))}
+              );
+            })}
             </>
           )}
 
@@ -919,49 +1391,182 @@ export const MapView: React.FC<MapViewProps> = ({
           </div>
         )}
 
-        {/* Selected Locality Inspector Side Panel */}
-        {selectedLocality && (
-          <div className="absolute top-4 right-4 z-[1000] w-80 bg-white/95 backdrop-blur-md rounded-2xl p-5 shadow-xl border border-slate-200 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
+        {/* Area Inspector Side Panel: Prompts selection when unselected, reveals details once selected */}
+        {!selectedLocality ? (
+          <div className="absolute top-4 right-4 z-[1000] w-76 bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-slate-200 text-xs animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 mb-1.5 text-slate-900 font-extrabold text-sm">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              <span>Select an Area in Indore</span>
+            </div>
+            <p className="text-slate-500 text-[11px] leading-relaxed mb-3">
+              Choose an area below or from the toolbar to view its boundary, population census, and service deficits:
+            </p>
+            <div className="space-y-1.5">
+              {areas?.features?.map((f: any) => (
+                <button
+                  key={`prompt-${f.properties?.id ?? f.id}`}
+                  onClick={() => handleSelectLocality(f.properties, f.geometry)}
+                  className="w-full text-left px-3 py-2 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200/80 text-[11px] font-semibold flex items-center justify-between transition-colors cursor-pointer group"
+                >
+                  <span className="truncate">{f.properties?.name}</span>
+                  <span className="text-[10px] text-slate-400 group-hover:text-blue-600 font-bold shrink-0 ml-1">
+                    Select →
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-slate-100 text-[10px] text-slate-400 flex items-center gap-1">
+              <Compass className="w-3 h-3 text-slate-400" />
+              <span>Click any locality to focus and inspect</span>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute top-4 right-4 z-[1000] w-84 max-h-[calc(100vh-140px)] flex flex-col bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-slate-200 animate-in fade-in slide-in-from-right-4 duration-300">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-2.5 mb-2.5 shrink-0">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                   {selectedLocality.area_type}
                 </span>
-                <h3 className="text-lg font-extrabold text-slate-900 mt-1 leading-tight">{selectedLocality.name}</h3>
+                <h3 className="text-base font-extrabold text-slate-900 mt-1 leading-tight">{selectedLocality.name}</h3>
               </div>
               <button
                 onClick={() => handleSelectLocality(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                 title="Close inspector"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                <span className="text-slate-500">Population:</span>
-                <span className="font-bold text-slate-800">{selectedLocality.population.toLocaleString()} residents</span>
-              </div>
-
-              {selectedLocality.accessibility_score != null && (
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-500">Accessibility Score:</span>
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto space-y-2.5 pr-1 text-xs flex-1">
+              {/* Locality Quick Metrics */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Population</span>
+                  <span className="font-extrabold text-slate-800 text-xs">
+                    {selectedLocality.population.toLocaleString()}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Accessibility</span>
                   <span
-                    className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                      selectedLocality.accessibility_score >= 80
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : selectedLocality.accessibility_score >= 60
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-red-100 text-red-800'
+                    className={`font-bold text-xs ${
+                      (selectedLocality.accessibility_score ?? 50) >= 80
+                        ? 'text-emerald-700'
+                        : (selectedLocality.accessibility_score ?? 50) >= 60
+                        ? 'text-amber-700'
+                        : 'text-red-700'
                     }`}
                   >
-                    {selectedLocality.accessibility_score} / 100
+                    {selectedLocality.accessibility_score ?? 'N/A'} / 100
                   </span>
+                </div>
+                {selectedLocality.nearest_service && (
+                  <div className="col-span-2 pt-1 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Nearest Amenity:</span>
+                    <span className="font-semibold text-slate-800 truncate max-w-[170px]" title={selectedLocality.nearest_service}>
+                      {selectedLocality.nearest_service}
+                    </span>
+                  </div>
+                )}
+                {selectedLocality.travel_time && (
+                  <div className="col-span-2 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">Est. Travel Time:</span>
+                    <span className="font-semibold text-slate-800">{selectedLocality.travel_time}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* No Related Data Warning Banner */}
+              {osmProblemReport?.hasNoData ? (
+                <div className="bg-amber-50/95 border border-amber-200/90 rounded-xl p-3 text-xs shadow-2xs">
+                  <div className="flex items-center gap-1.5 text-amber-950 font-bold mb-1">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>No {osmProblemReport.categoryLabel} Amenities Found</span>
+                  </div>
+                  <p className="text-amber-900 text-[11px] leading-relaxed">
+                    OpenStreetMap currently has <strong>zero mapped {osmProblemReport.categoryLabel.toLowerCase()} facilities</strong> within {selectedLocality.name.split('/')[0].trim()}&apos;s boundary.
+                  </p>
+                  <div className="mt-2 pt-2 border-t border-amber-200/70 text-[11px] text-amber-950 flex items-center justify-between">
+                    <span className="text-amber-800 font-medium">Affected Population:</span>
+                    <strong className="font-extrabold">{selectedLocality.population.toLocaleString()} residents</strong>
+                  </div>
+                </div>
+              ) : osmProblemReport && !osmProblemReport.hasNoData ? (
+                <div className="bg-emerald-50/95 border border-emerald-200/90 rounded-xl p-2.5 text-xs shadow-2xs">
+                  <div className="flex items-center justify-between text-emerald-950 font-bold mb-0.5">
+                    <span className="flex items-center gap-1.5 text-[11px]">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      OSM Facilities Verified
+                    </span>
+                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-extrabold">
+                      {osmProblemReport.facilityCount} Facilities Live
+                    </span>
+                  </div>
+                  <p className="text-emerald-800 text-[10px]">
+                    Mapped within {selectedLocality.name.split('/')[0].trim()} boundary via OpenStreetMap.
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Problems Related to OSM Selected Query */}
+              {osmProblemReport && osmProblemReport.problems.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 flex items-center gap-1 text-[11px]">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      Problems Detected via OSM
+                    </span>
+                    <span className="text-[10px] font-extrabold uppercase bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-100">
+                      {osmProblemReport.problems.length} Deficits
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                    {osmProblemReport.problems.map((prob, i) => (
+                      <div
+                        key={`osm-prob-${i}`}
+                        className={`p-2.5 rounded-xl border text-[11px] space-y-0.5 shadow-2xs ${
+                          prob.severity === 'critical'
+                            ? 'bg-rose-50/90 border-rose-200 text-rose-950'
+                            : prob.severity === 'high'
+                            ? 'bg-orange-50/90 border-orange-200 text-orange-950'
+                            : 'bg-amber-50/90 border-amber-200 text-amber-950'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-bold flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                prob.severity === 'critical'
+                                  ? 'bg-rose-600'
+                                  : prob.severity === 'high'
+                                  ? 'bg-orange-600'
+                                  : 'bg-amber-600'
+                              }`}
+                            />
+                            {prob.title}
+                          </span>
+                          <span
+                            className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                              prob.severity === 'critical'
+                                ? 'bg-rose-200/80 text-rose-800'
+                                : 'bg-orange-200/80 text-orange-800'
+                            }`}
+                          >
+                            {prob.severity}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed opacity-90">{prob.description}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {selectedLocality.main_gap && (
+              {/* Primary Gap Card if no OSM report */}
+              {!osmProblemReport && selectedLocality.main_gap && (
                 <div className="bg-red-50/70 border border-red-100 p-2.5 rounded-xl">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-red-600 block mb-0.5">
                     Primary Service Gap
@@ -969,56 +1574,58 @@ export const MapView: React.FC<MapViewProps> = ({
                   <p className="font-semibold text-red-900 leading-snug">{selectedLocality.main_gap}</p>
                 </div>
               )}
-
-              {selectedLocality.nearest_service && (
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-500">Nearest Amenity:</span>
-                  <span className="font-medium text-slate-800 text-right">{selectedLocality.nearest_service}</span>
-                </div>
-              )}
-
-              {selectedLocality.travel_time && (
-                <div className="flex justify-between items-center py-1 border-b border-slate-100">
-                  <span className="text-slate-500">Est. Travel Time:</span>
-                  <span className="font-semibold text-slate-800">{selectedLocality.travel_time}</span>
-                </div>
-              )}
-
-              {selectedLocality.data_confidence != null && (
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-slate-500">Data Confidence:</span>
-                  <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px]">
-                    {selectedLocality.data_confidence}% Verified
-                  </span>
-                </div>
-              )}
             </div>
 
-            {/* Overpass Live Ingestion Quick Action */}
-            <button
-              onClick={() => handleQueryOverpass(selectedLocality)}
-              disabled={isQueryingOverpass}
-              className="w-full mt-3 flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 py-2 px-3 rounded-xl transition-all shadow-xs disabled:opacity-50"
-            >
-              {isQueryingOverpass ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-              ) : (
-                <Search className="w-3.5 h-3.5 text-indigo-600" />
-              )}
-              <span>Query OSM for {selectedLocality.name}</span>
-            </button>
-
-            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
-              <span className="flex items-center gap-1">
-                <Compass className="w-3 h-3 text-slate-400" />
-                {dataStatus.isLive ? 'Backend Live Engine' : 'Deterministic Seed Model'}
-              </span>
+            {/* Actions Footer */}
+            <div className="pt-2.5 mt-2 border-t border-slate-100 shrink-0 space-y-2">
               <button
-                onClick={() => handleSelectLocality(null)}
-                className="text-blue-600 hover:text-blue-800 font-semibold"
+                onClick={() => handleQueryOverpass(selectedLocality)}
+                disabled={isQueryingOverpass}
+                className="w-full flex items-center justify-center gap-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded-xl transition-all shadow-xs disabled:opacity-50 cursor-pointer"
               >
-                Clear Selection
+                {isQueryingOverpass ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                ) : (
+                  <Search className="w-3.5 h-3.5 text-white" />
+                )}
+                <span>
+                  {isQueryingOverpass ? 'Querying OSM...' : `Query OSM for ${selectedLocality.name.split('/')[0].trim()}`}
+                </span>
               </button>
+
+              <div className="flex items-center gap-1 text-[10px]">
+                <button
+                  onClick={() => setActiveLayer('gap')}
+                  className="flex-1 py-1 px-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-center transition-colors cursor-pointer"
+                >
+                  Service Gaps
+                </button>
+                <button
+                  onClick={() => setActiveLayer('recommendations')}
+                  className="flex-1 py-1 px-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-center transition-colors cursor-pointer"
+                >
+                  Interventions
+                </button>
+                <button
+                  onClick={() => setActiveLayer('reports')}
+                  className="flex-1 py-1 px-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-center transition-colors cursor-pointer"
+                >
+                  Reports ({reports.length})
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+                <span className="flex items-center gap-1">
+                  <Compass className="w-3 h-3 text-slate-400" />
+                  {dataStatus.isLive ? 'Backend Live Engine' : 'Deterministic Seed Model'}
+                </span>
+                <button
+                  onClick={() => handleSelectLocality(null)}
+                  className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                >
+                  Reset City
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1055,30 +1662,47 @@ export const MapView: React.FC<MapViewProps> = ({
             </div>
           )}
 
-          {/* Service Category Icons */}
-          <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+          {/* Service Category Icons with Actual Logos */}
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+              <span
+                className="w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0 shadow-xs p-0.5"
+                dangerouslySetInnerHTML={{ __html: CATEGORY_CONFIG.healthcare.icon }}
+              />
               <span className="text-slate-700 font-medium">Healthcare</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+              <span
+                className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-xs p-0.5"
+                dangerouslySetInnerHTML={{ __html: CATEGORY_CONFIG.education.icon }}
+              />
               <span className="text-slate-700 font-medium">Education</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+              <span
+                className="w-4 h-4 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs p-0.5"
+                dangerouslySetInnerHTML={{ __html: CATEGORY_CONFIG.transport.icon }}
+              />
               <span className="text-slate-700 font-medium">Transport</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 shrink-0" />
+              <span
+                className="w-4 h-4 rounded-full bg-cyan-500 text-white flex items-center justify-center shrink-0 shadow-xs p-0.5"
+                dangerouslySetInnerHTML={{ __html: CATEGORY_CONFIG.water.icon }}
+              />
               <span className="text-slate-700 font-medium">Water Points</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+              <span
+                className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs p-0.5"
+                dangerouslySetInnerHTML={{ __html: CATEGORY_CONFIG.market.icon }}
+              />
               <span className="text-slate-700 font-medium">Food Markets</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-purple-600 shrink-0" />
+              <span className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-xs p-0.5">
+                <Sparkles className="w-2.5 h-2.5 text-white" />
+              </span>
               <span className="text-slate-700 font-medium">Interventions</span>
             </div>
           </div>

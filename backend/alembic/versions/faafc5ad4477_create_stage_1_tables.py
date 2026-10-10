@@ -31,7 +31,7 @@ def upgrade() -> None:
     sa.Column('previous_value', sa.Text(), nullable=True),
     sa.Column('new_value', sa.Text(), nullable=True),
     sa.Column('reason', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('audit_logs', schema=None) as batch_op:
@@ -48,7 +48,7 @@ def upgrade() -> None:
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('trust_level', sa.Float(), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('data_sources', schema=None) as batch_op:
@@ -62,8 +62,8 @@ def upgrade() -> None:
     sa.Column('parent_id', sa.Integer(), nullable=True),
     sa.Column('geometry', app.models.types.SafeGeometry(), nullable=True),
     sa.Column('population', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['parent_id'], ['geographic_areas.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -80,8 +80,8 @@ def upgrade() -> None:
     sa.Column('description', sa.Text(), nullable=True),
     sa.Column('icon', sa.String(length=100), nullable=True),
     sa.Column('is_active', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('service_categories', schema=None) as batch_op:
@@ -95,8 +95,8 @@ def upgrade() -> None:
     sa.Column('population', sa.Integer(), nullable=False),
     sa.Column('demographics', sa.Text(), nullable=True),
     sa.Column('source_type', sa.String(length=50), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['area_id'], ['geographic_areas.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -117,8 +117,8 @@ def upgrade() -> None:
     sa.Column('verification_status', sa.String(length=50), nullable=False),
     sa.Column('confidence_score', sa.Float(), nullable=False),
     sa.Column('operating_hours', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['area_id'], ['geographic_areas.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['category_id'], ['service_categories.id'], ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id')
@@ -148,8 +148,8 @@ def upgrade() -> None:
     sa.Column('source_type', sa.String(length=50), nullable=False),
     sa.Column('verification_status', sa.String(length=50), nullable=False),
     sa.Column('confidence_score', sa.Float(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['area_id'], ['geographic_areas.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['category_id'], ['service_categories.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['service_id'], ['services.id'], ondelete='SET NULL'),
@@ -172,8 +172,8 @@ def upgrade() -> None:
     sa.Column('capacity', sa.Integer(), nullable=False),
     sa.Column('current_load', sa.Integer(), nullable=True),
     sa.Column('status', sa.String(length=50), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['service_id'], ['services.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -189,7 +189,7 @@ def upgrade() -> None:
     sa.Column('verification_status', sa.String(length=50), nullable=False),
     sa.Column('verification_type', sa.String(length=50), nullable=False),
     sa.Column('notes', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.ForeignKeyConstraint(['report_id'], ['community_reports.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )

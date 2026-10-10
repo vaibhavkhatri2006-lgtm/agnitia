@@ -253,10 +253,12 @@ def determine_category_code(tags: Dict[str, str]) -> Optional[str]:
     if amenity in ["school", "college", "kindergarten", "university"]:
         return "education"
     if (
-        highway == "bus_stop"
-        or public_transport in ["stop_position", "platform"]
-        or railway in ["station", "halt"]
-        or amenity == "bus_station"
+        highway in ["bus_stop", "platform"]
+        or public_transport in ["stop_position", "platform", "station"]
+        or railway in ["station", "halt", "tram_stop"]
+        or amenity in ["bus_station", "ferry_terminal"]
+        or tags.get("bus") == "yes"
+        or tags.get("route") == "bus"
     ):
         return "transport"
     if (
@@ -266,8 +268,8 @@ def determine_category_code(tags: Dict[str, str]) -> Optional[str]:
     ):
         return "water"
     if (
-        amenity == "marketplace"
-        or shop in ["supermarket", "convenience", "greengrocer", "general"]
+        amenity in ["marketplace", "supermarket"]
+        or shop in ["supermarket", "convenience", "greengrocer", "general", "grocery"]
     ):
         return "market"
     return None
@@ -626,9 +628,20 @@ def fetch_normalized_osm_services(
     if area_id:
         area = db.query(GeographicArea).filter(GeographicArea.id == area_id).first()
     elif locality_name:
-        area = db.query(GeographicArea).filter(GeographicArea.name.ilike(locality_name.strip())).first()
+        clean_name = locality_name.strip()
+        area = db.query(GeographicArea).filter(GeographicArea.name.ilike(clean_name)).first()
+        if not area:
+            # Handle forms like 'Indore, MP (Primary)', 'Rajwada / Central Core', 'Indore (City)'
+            import re
+            parts = [p.strip() for p in re.split(r"[,/()]", clean_name) if p.strip()]
+            for part in parts:
+                area = db.query(GeographicArea).filter(GeographicArea.name.ilike(part)).first()
+                if not area:
+                    area = db.query(GeographicArea).filter(GeographicArea.name.ilike(f"%{part}%")).first()
+                if area:
+                    break
 
-    resolved_locality_name = locality_name or (area.name if area else "Target Locality")
+    resolved_locality_name = area.name if area else (locality_name or "Target Locality")
 
     if area and not bbox and center_lat is None:
         from app.analytics.distance import extract_centroid_lat_lon
@@ -636,14 +649,21 @@ def fetch_normalized_osm_services(
             try:
                 center_lat, center_lon = extract_centroid_lat_lon(area.geometry)
             except Exception:
-                center_lat, center_lon = 12.9716, 77.5946
+                center_lat, center_lon = 22.7196, 75.8577
         else:
-            center_lat, center_lon = 12.9716, 77.5946
+            center_lat, center_lon = 22.7196, 75.8577
 
     if center_lat is None and not bbox:
-        if locality_name and any(k in locality_name.lower() for k in ["indore", "rajwada", "vijay nagar", "palasia", "bhawar kuan", "annapurna"]):
-            center_lat, center_lon = 22.7196, 75.8577
-        elif locality_name and any(k in locality_name.lower() for k in ["bengaluru", "bangalore", "metro city"]):
+        loc_lower = (locality_name or "").lower()
+        if "vijay nagar" in loc_lower or "scheme 54" in loc_lower:
+            center_lat, center_lon = 22.7550, 75.8965
+        elif "palasia" in loc_lower or "chhappan" in loc_lower:
+            center_lat, center_lon = 22.7250, 75.8850
+        elif "bhawar" in loc_lower or "bhanwar" in loc_lower:
+            center_lat, center_lon = 22.6910, 75.8650
+        elif "annapurna" in loc_lower or "sudama" in loc_lower:
+            center_lat, center_lon = 22.7000, 75.8325
+        elif "bengaluru" in loc_lower or "bangalore" in loc_lower:
             center_lat, center_lon = 12.9716, 77.5946
         else:
             center_lat, center_lon = 22.7196, 75.8577
@@ -775,7 +795,7 @@ def _build_deterministic_demo_response(
 
     services_out: List[OSMNormalizedService] = []
     for s in demo_svcs:
-        cat_code = s.category.code if s.category else "healthcare"
+        cat_code = s.category.code if s.category else (categories[0].lower() if categories else "healthcare")
         cap = s.capacity_record.capacity if s.capacity_record else None
         services_out.append(
             OSMNormalizedService(

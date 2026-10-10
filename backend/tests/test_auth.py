@@ -238,3 +238,71 @@ def test_role_authorization_community():
         headers={"Authorization": f"Bearer {cit_token}"},
     )
     assert cit_resp.status_code == 403
+
+
+def test_register_user_lifecycle():
+    """Verify that new users can register, receive tokens, and subsequently authenticate."""
+    import time
+    unique_email = f"testuser_{int(time.time() * 1000)}@civicpulse.org"
+
+    # 1. Successful registration
+    reg_resp = client.post(
+        "/auth/register",
+        json={
+            "email": unique_email,
+            "password": "Password123!",
+            "role": "citizen",
+            "display_name": "Test Citizen",
+        },
+    )
+    assert reg_resp.status_code in (200, 201), f"Registration failed: {reg_resp.text}"
+    reg_data = reg_resp.json()
+    assert "access_token" in reg_data
+    assert reg_data["user"]["email"] == unique_email
+    assert reg_data["user"]["role"] == "citizen"
+    assert reg_data["user"]["display_name"] == "Test Citizen"
+
+    # 2. Duplicate registration rejection
+    dup_resp = client.post(
+        "/auth/register",
+        json={
+            "email": unique_email,
+            "password": "AnotherPassword123!",
+            "role": "citizen",
+        },
+    )
+    assert dup_resp.status_code == 400
+    assert "already exists" in dup_resp.json()["detail"].lower()
+
+    # 3. Invalid email rejection
+    bad_email_resp = client.post(
+        "/auth/register",
+        json={
+            "email": "not-an-email",
+            "password": "Password123!",
+            "role": "citizen",
+        },
+    )
+    assert bad_email_resp.status_code == 400
+
+    # 4. Successful login with registered credentials
+    login_resp = client.post(
+        "/auth/login",
+        json={
+            "email": unique_email,
+            "password": "Password123!",
+        },
+    )
+    assert login_resp.status_code == 200
+    login_data = login_resp.json()
+    assert login_data["user"]["email"] == unique_email
+
+    # 5. Token works for /auth/me
+    token = login_data["access_token"]
+    me_resp = client.get(
+        "/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert me_resp.status_code == 200
+    assert me_resp.json()["email"] == unique_email
+

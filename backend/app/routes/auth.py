@@ -3,7 +3,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, TokenResponse, UserResponse, RoleVerificationResponse
+from app.schemas.auth import (
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    TokenResponse,
+    UserResponse,
+    RoleVerificationResponse,
+)
 from app.schemas.errors import HTTPErrorResponse
 from app.services.auth_service import auth_service
 from app.dependencies.auth import (
@@ -14,6 +21,26 @@ from app.dependencies.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication & RBAC"])
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user account in SQL database",
+    responses={
+        400: {"model": HTTPErrorResponse, "description": "Email already registered or invalid input"},
+    },
+)
+def register(
+    register_req: RegisterRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Registers a new user in the SQL database, securely hashes the password with bcrypt,
+    and returns a signed JWT bearer token and user profile.
+    """
+    return auth_service.register(db, register_req)
 
 
 @router.post(
@@ -31,10 +58,30 @@ def login(
     db: Session = Depends(get_db),
 ):
     """
-    Authenticates a user via email/username and password.
+    Authenticates a user via email/username and password against the SQL database.
     Returns a signed JWT bearer token and user profile including server-validated role and permissions.
     """
     return auth_service.login(db, login_req)
+
+
+@router.post(
+    "/reset-password",
+    response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reset or update user password in SQL database",
+    responses={
+        400: {"model": HTTPErrorResponse, "description": "Invalid input"},
+    },
+)
+def reset_password(
+    req: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Updates or sets the password for an email account in the SQL database,
+    securely re-hashes with bcrypt, and issues a fresh JWT access token.
+    """
+    return auth_service.reset_or_sync_password(db, req)
 
 
 @router.get(

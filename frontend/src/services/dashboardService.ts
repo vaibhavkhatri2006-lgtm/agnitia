@@ -2,7 +2,7 @@ import { AnalysisScale } from '../components/analysis/ScaleSelector';
 import { CoverageData, AccessibilityData, TrendData } from '../components/analysis/AnalyticsPanel';
 import { Metric } from '../types/models';
 
-const BACKEND_BASE_URL = 'http://127.0.0.1:8000';
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export interface MultiScaleAreaItem {
   area_id: number;
@@ -63,23 +63,23 @@ export function scaleToScopeParam(scale: AnalysisScale): string {
   }
 }
 
-// Deterministic fallback data for multi-scale analytics
+// Deterministic fallback data for multi-scale analytics (Indore, Madhya Pradesh)
 const DETERMINISTIC_MULTISCALE: Record<string, MultiScaleResult> = {
   local: {
     scope: 'local',
     available: true,
     status: 'success',
-    message: 'Evaluated 4 population cells at Local scale',
+    message: 'Evaluated 4 population cells at Local scale in Indore',
     total_areas: 4,
     total_population: 47000,
     average_accessibility: 67.6,
     average_gap: 32.4,
     coverage_pct: 74.5,
     areas: [
-      { area_id: 101, name: 'Cell 1 (Downtown Core)', area_type: 'local', population: 15000, accessibility_score: 82.8, gap_score: 17.2, desert_classification: 'Well Served', parent_name: 'Downtown Core' },
-      { area_id: 102, name: 'Cell 2 (Downtown Core)', area_type: 'local', population: 10000, accessibility_score: 82.8, gap_score: 17.2, desert_classification: 'Well Served', parent_name: 'Downtown Core' },
-      { area_id: 103, name: 'Cell 3 (Highlands Valley)', area_type: 'local', population: 12000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', parent_name: 'Highlands Valley' },
-      { area_id: 104, name: 'Cell 4 (Highlands Valley)', area_type: 'local', population: 10000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', parent_name: 'Highlands Valley' },
+      { area_id: 101, name: 'Cell 1 (Rajwada)', area_type: 'local', population: 15000, accessibility_score: 82.8, gap_score: 17.2, desert_classification: 'Well Served', parent_name: 'Rajwada' },
+      { area_id: 102, name: 'Cell 2 (Rajwada)', area_type: 'local', population: 10000, accessibility_score: 82.8, gap_score: 17.2, desert_classification: 'Well Served', parent_name: 'Rajwada' },
+      { area_id: 103, name: 'Cell 3 (Vijay Nagar)', area_type: 'local', population: 12000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', parent_name: 'Vijay Nagar' },
+      { area_id: 104, name: 'Cell 4 (Vijay Nagar)', area_type: 'local', population: 10000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', parent_name: 'Vijay Nagar' },
     ],
     is_demo_data: true,
   },
@@ -87,18 +87,18 @@ const DETERMINISTIC_MULTISCALE: Record<string, MultiScaleResult> = {
     scope: 'neighbourhood',
     available: true,
     status: 'success',
-    message: 'Evaluated 5 neighbourhoods in Metro City',
+    message: 'Evaluated 5 neighbourhoods in Indore',
     total_areas: 5,
     total_population: 92000,
     average_accessibility: 69.3,
     average_gap: 30.7,
     coverage_pct: 78.2,
     areas: [
-      { area_id: 6, name: 'Downtown Core', area_type: 'neighbourhood', population: 25000, accessibility_score: 82.8, gap_score: 17.2, desert_classification: 'Well Served', parent_name: 'District 1 - Central Ward' },
-      { area_id: 7, name: 'West End', area_type: 'neighbourhood', population: 12000, accessibility_score: 83.2, gap_score: 16.8, desert_classification: 'Well Served', parent_name: 'District 1 - Central Ward' },
-      { area_id: 8, name: 'Riverside Commons', area_type: 'neighbourhood', population: 18000, accessibility_score: 69.7, gap_score: 30.3, desert_classification: 'Adequate', parent_name: 'District 2 - Riverside North' },
-      { area_id: 9, name: 'Highlands Valley', area_type: 'neighbourhood', population: 22000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', parent_name: 'District 3 - Highlands East' },
-      { area_id: 10, name: 'South Hillside', area_type: 'neighbourhood', population: 15000, accessibility_score: 57.9, gap_score: 42.1, desert_classification: 'At Risk', parent_name: 'District 4 - Southern Outskirts' },
+      { area_id: 6, name: 'Rajwada', area_type: 'neighbourhood', population: 25000, accessibility_score: 82.8, gap_score: 17.2, desert_classification: 'Well Served', parent_name: 'Zone 1 - Rajwada Central' },
+      { area_id: 7, name: 'Sarafa', area_type: 'neighbourhood', population: 12000, accessibility_score: 83.2, gap_score: 16.8, desert_classification: 'Well Served', parent_name: 'Zone 1 - Rajwada Central' },
+      { area_id: 8, name: 'Old Palasia', area_type: 'neighbourhood', population: 18000, accessibility_score: 69.7, gap_score: 30.3, desert_classification: 'Adequate', parent_name: 'Zone 2 - Palasia East' },
+      { area_id: 9, name: 'Vijay Nagar', area_type: 'neighbourhood', population: 22000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', parent_name: 'Zone 3 - Vijay Nagar North' },
+      { area_id: 10, name: 'Bhanwarkuan', area_type: 'neighbourhood', population: 15000, accessibility_score: 57.9, gap_score: 42.1, desert_classification: 'At Risk', parent_name: 'Zone 4 - Bhanwarkuan South' },
     ],
     is_demo_data: true,
   },
@@ -106,17 +106,17 @@ const DETERMINISTIC_MULTISCALE: Record<string, MultiScaleResult> = {
     scope: 'ward',
     available: true,
     status: 'success',
-    message: 'Evaluated 4 administrative wards in Metro City',
+    message: 'Evaluated 4 administrative zones in Indore',
     total_areas: 4,
     total_population: 92000,
     average_accessibility: 67.9,
     average_gap: 32.1,
     coverage_pct: 76.8,
     areas: [
-      { area_id: 2, name: 'District 1 - Central Ward', area_type: 'ward', population: 37000, accessibility_score: 82.6, gap_score: 17.4, desert_classification: 'Well Served', parent_name: 'Metro City' },
-      { area_id: 3, name: 'District 2 - Riverside North', area_type: 'ward', population: 18000, accessibility_score: 56.7, gap_score: 43.3, desert_classification: 'At Risk', parent_name: 'Metro City' },
-      { area_id: 4, name: 'District 3 - Highlands East', area_type: 'ward', population: 22000, accessibility_score: 53.4, gap_score: 46.6, desert_classification: 'At Risk', parent_name: 'Metro City' },
-      { area_id: 5, name: 'District 4 - Southern Outskirts', area_type: 'ward', population: 15000, accessibility_score: 59.0, gap_score: 41.0, desert_classification: 'At Risk', parent_name: 'Metro City' },
+      { area_id: 2, name: 'Zone 1 - Rajwada Central', area_type: 'ward', population: 37000, accessibility_score: 82.6, gap_score: 17.4, desert_classification: 'Well Served', parent_name: 'Indore' },
+      { area_id: 3, name: 'Zone 2 - Palasia East', area_type: 'ward', population: 18000, accessibility_score: 56.7, gap_score: 43.3, desert_classification: 'At Risk', parent_name: 'Indore' },
+      { area_id: 4, name: 'Zone 3 - Vijay Nagar North', area_type: 'ward', population: 22000, accessibility_score: 53.4, gap_score: 46.6, desert_classification: 'At Risk', parent_name: 'Indore' },
+      { area_id: 5, name: 'Zone 4 - Bhanwarkuan South', area_type: 'ward', population: 15000, accessibility_score: 59.0, gap_score: 41.0, desert_classification: 'At Risk', parent_name: 'Indore' },
     ],
     is_demo_data: true,
   },
@@ -124,14 +124,14 @@ const DETERMINISTIC_MULTISCALE: Record<string, MultiScaleResult> = {
     scope: 'city',
     available: true,
     status: 'success',
-    message: 'Evaluated Metro City metropolitan boundary',
+    message: 'Evaluated Indore municipal corporation boundary',
     total_areas: 1,
     total_population: 72000,
     average_accessibility: 82.2,
     average_gap: 17.8,
     coverage_pct: 82.5,
     areas: [
-      { area_id: 1, name: 'Metro City', area_type: 'city', population: 72000, accessibility_score: 82.2, gap_score: 17.8, desert_classification: 'Well Served', parent_name: null },
+      { area_id: 1, name: 'Indore', area_type: 'city', population: 72000, accessibility_score: 82.2, gap_score: 17.8, desert_classification: 'Well Served', parent_name: null },
     ],
     is_demo_data: true,
   },
@@ -177,11 +177,11 @@ const DETERMINISTIC_MULTISCALE: Record<string, MultiScaleResult> = {
 };
 
 const DETERMINISTIC_RANKINGS: UnderservedRanking[] = [
-  { rank: 1, area_id: 9, area_name: 'Highlands Valley', area_type: 'neighbourhood', population: 22000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', most_critical_category: 'Healthcare' },
-  { rank: 2, area_id: 4, area_name: 'District 3 - Highlands East', area_type: 'ward', population: 22000, accessibility_score: 53.4, gap_score: 46.6, desert_classification: 'At Risk', most_critical_category: 'Healthcare' },
-  { rank: 3, area_id: 3, area_name: 'District 2 - Riverside North', area_type: 'ward', population: 18000, accessibility_score: 56.7, gap_score: 43.3, desert_classification: 'At Risk', most_critical_category: 'Education' },
-  { rank: 4, area_id: 10, area_name: 'South Hillside', area_type: 'neighbourhood', population: 15000, accessibility_score: 57.9, gap_score: 42.1, desert_classification: 'At Risk', most_critical_category: 'Food Markets' },
-  { rank: 5, area_id: 5, area_name: 'District 4 - Southern Outskirts', area_type: 'ward', population: 15000, accessibility_score: 59.0, gap_score: 41.0, desert_classification: 'At Risk', most_critical_category: 'Transport' },
+  { rank: 1, area_id: 9, area_name: 'Vijay Nagar', area_type: 'neighbourhood', population: 22000, accessibility_score: 52.5, gap_score: 47.5, desert_classification: 'At Risk', most_critical_category: 'Healthcare' },
+  { rank: 2, area_id: 4, area_name: 'Zone 3 - Vijay Nagar North', area_type: 'ward', population: 22000, accessibility_score: 53.4, gap_score: 46.6, desert_classification: 'At Risk', most_critical_category: 'Healthcare' },
+  { rank: 3, area_id: 3, area_name: 'Zone 2 - Palasia East', area_type: 'ward', population: 18000, accessibility_score: 56.7, gap_score: 43.3, desert_classification: 'At Risk', most_critical_category: 'Education' },
+  { rank: 4, area_id: 10, area_name: 'Bhanwarkuan', area_type: 'neighbourhood', population: 15000, accessibility_score: 57.9, gap_score: 42.1, desert_classification: 'At Risk', most_critical_category: 'Food Markets' },
+  { rank: 5, area_id: 5, area_name: 'Zone 4 - Bhanwarkuan South', area_type: 'ward', population: 15000, accessibility_score: 59.0, gap_score: 41.0, desert_classification: 'At Risk', most_critical_category: 'Transport' },
 ];
 
 export async function fetchMultiScaleAnalytics(scale: AnalysisScale): Promise<MultiScaleResult> {
@@ -250,7 +250,7 @@ const DETERMINISTIC_DASHBOARD_RECOMMENDATIONS: DashboardRecommendation[] = [
     rank: 1,
     recommendation_score: 84.5,
     area_id: 9,
-    area_name: 'Bhanwarkuan / Highlands Valley',
+    area_name: 'Vijay Nagar',
     population: 22000,
     strategy: 'Centroid Optimal Allocation',
     expected_gain_pts: 24,
@@ -267,7 +267,7 @@ const DETERMINISTIC_DASHBOARD_RECOMMENDATIONS: DashboardRecommendation[] = [
     rank: 2,
     recommendation_score: 78.2,
     area_id: 10,
-    area_name: 'Annapurna / South Hillside',
+    area_name: 'Bhanwarkuan',
     population: 15000,
     strategy: 'Primary Education Capacity Upgrade',
     expected_gain_pts: 18,
@@ -284,13 +284,13 @@ const DETERMINISTIC_DASHBOARD_RECOMMENDATIONS: DashboardRecommendation[] = [
     rank: 3,
     recommendation_score: 72.8,
     area_id: 3,
-    area_name: 'District 2 - Riverside North',
+    area_name: 'Zone 2 - Palasia East',
     population: 18000,
     strategy: 'Feeder Transit Corridor Link',
     expected_gain_pts: 15,
     confidence: 0.88,
     reasons: [
-      'Direct link to metropolitan bus rapid transit corridor',
+      'Direct link to BRTS transit corridor',
       'Reduces public transit wait and travel time by 16 minutes',
     ],
   },

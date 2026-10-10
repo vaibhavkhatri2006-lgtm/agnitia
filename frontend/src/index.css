@@ -93,3 +93,18 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* Custom Leaflet Pin Styling for crisp SVG rendering */
+.custom-leaflet-pin {
+  background: transparent !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.custom-leaflet-pin svg {
+  display: block;
+  pointer-events: none;
+}
+

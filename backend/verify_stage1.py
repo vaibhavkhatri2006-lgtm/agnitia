@@ -82,11 +82,15 @@ def run_stage_1_verification():
         # Check 3: Underserved area check
         print("\n3. Underserved Geographic Variation Check:")
         hc_cat = db.query(ServiceCategory).filter_by(code="healthcare").first()
-        highlands = db.query(GeographicArea).filter_by(name="Highlands Valley").first()
+        highlands = (
+            db.query(GeographicArea).filter_by(name="Vijay Nagar").first()
+            or db.query(GeographicArea).filter_by(name="Highlands Valley").first()
+        )
+        assert highlands is not None, "Underserved test area not found"
         highlands_hc = [s for s in highlands.services if s.category_id == hc_cat.id]
-        print(f"   - Highlands Valley (Pop {highlands.population}) Healthcare Services: {len(highlands_hc)}")
-        assert len(highlands_hc) == 0, "Highlands Valley should have no clinics to represent underserved area"
-        print("   -> PASS: Highlands Valley successfully represents healthcare desert.")
+        print(f"   - {highlands.name} (Pop {highlands.population}) Healthcare Services: {len(highlands_hc)}")
+        assert len(highlands_hc) == 0, f"{highlands.name} should have no clinics to represent underserved area"
+        print(f"   -> PASS: {highlands.name} successfully represents healthcare desert.")
 
         # Check 4: Disrupted transport service check
         print("\n4. Service Disruption Check:")

@@ -17,10 +17,9 @@ import {
   INDORE_AREAS_GEOJSON,
   INDORE_SERVICES_GEOJSON,
   CITIES,
-  INDORE_BBOX,
 } from './deterministicData';
 
-const BACKEND_BASE_URL = 'http://127.0.0.1:8000';
+const BACKEND_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export interface DataFetchStatus {
   source: 'live' | 'demo' | 'overpass';
@@ -154,7 +153,7 @@ export async function fetchCommunityReports(): Promise<{
             description: r.description,
             category_code: r.category_code,
             category_name: r.category_code ? r.category_code.toUpperCase() : 'General',
-            area_name: r.area_name || 'Metro City',
+            area_name: r.area_name || 'Indore',
             latitude: r.latitude,
             longitude: r.longitude,
             severity: r.severity || 'medium',
@@ -227,12 +226,17 @@ export interface OverpassQueryParams {
   category?: string;
   localityName?: string;
   areaId?: number;
+  centerLat?: number;
+  centerLon?: number;
+  radiusMeters?: number;
   forceLive?: boolean;
   cityId?: 'indore' | 'bengaluru';
 }
 
 export interface OverpassQueryResult {
   facilities: ServiceFacilityProperties[];
+  totalCount?: number;
+  isCapped?: boolean;
   cached: boolean;
   status: 'success' | 'empty' | 'timeout' | 'error';
   source: string;
@@ -241,6 +245,62 @@ export interface OverpassQueryResult {
   error?: string | null;
   warning?: string | null;
   attribution: string;
+}
+
+/**
+ * Samples representative facilities across categories so map renders smoothly at 60 FPS
+ * without choking Leaflet on thousands of simultaneous SVG pins.
+ */
+function sampleRepresentativeFacilities(
+  facilities: ServiceFacilityProperties[],
+  maxCount = 120
+): ServiceFacilityProperties[] {
+  if (facilities.length <= maxCount) return facilities;
+
+  const categories: Array<'healthcare' | 'education' | 'transport' | 'water' | 'market'> = [
+    'healthcare',
+    'education',
+    'transport',
+    'water',
+    'market',
+  ];
+  const perCat = Math.floor(maxCount / categories.length);
+  const result: ServiceFacilityProperties[] = [];
+  const categorized: Record<string, ServiceFacilityProperties[]> = {
+    healthcare: [],
+    education: [],
+    transport: [],
+    water: [],
+    market: [],
+  };
+  const other: ServiceFacilityProperties[] = [];
+
+  for (const f of facilities) {
+    if (categorized[f.category_code]) {
+      categorized[f.category_code].push(f);
+    } else {
+      other.push(f);
+    }
+  }
+
+  for (const cat of categories) {
+    const list = categorized[cat];
+    if (list.length <= perCat) {
+      result.push(...list);
+    } else {
+      const step = list.length / perCat;
+      for (let i = 0; i < perCat; i++) {
+        result.push(list[Math.floor(i * step)]);
+      }
+    }
+  }
+
+  const remaining = maxCount - result.length;
+  if (remaining > 0 && other.length > 0) {
+    result.push(...other.slice(0, remaining));
+  }
+
+  return result;
 }
 
 /**
@@ -275,18 +335,45 @@ export async function queryOverpassServices(
     ? `${effectiveBbox.map((n) => n.toFixed(3)).join(',')}_${category}`
     : `default_${category}`;
 
-  const cachedEntry = overpassCache.get(cacheKey);
-  if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS) {
+  // Check in-memory cache first (only when forceLive is NOT requested)
+  if (!params.forceLive) {
+    const cachedEntry = overpassCache.get(cacheKey);
+    if (cachedEntry && Date.now() - cachedEntry.timestamp < CACHE_TTL_MS) {
+      let cachedFacilities = cachedEntry.data;
+    const totalCount = cachedFacilities.length;
+    let isCapped = false;
+
+    // Apply locality bounding box filtering if locality is specified
+    if (params.bbox) {
+      const [minLat, minLon, maxLat, maxLon] = params.bbox;
+      const buffer = 0.003;
+      cachedFacilities = cachedFacilities.filter(
+        (f) =>
+          f.latitude >= minLat - buffer &&
+          f.latitude <= maxLat + buffer &&
+          f.longitude >= minLon - buffer &&
+          f.longitude <= maxLon + buffer
+      );
+    } else if (cachedFacilities.length > 120) {
+      cachedFacilities = sampleRepresentativeFacilities(cachedFacilities, 120);
+      isCapped = true;
+    }
+
     return {
-      facilities: cachedEntry.data,
+      facilities: cachedFacilities,
+      totalCount,
+      isCapped,
       cached: true,
-      status: cachedEntry.data.length > 0 ? 'success' : 'empty',
+      status: cachedFacilities.length > 0 ? 'success' : 'empty',
       source: 'OpenStreetMap',
       isDemoData: false,
       localityName: effectiveLocalityName,
       attribution: '© OpenStreetMap contributors',
     };
   }
+} else {
+  overpassCache.delete(cacheKey);
+}
 
   // 1. Query Backend Overpass Data Provider Endpoint
   try {
@@ -299,6 +386,10 @@ export async function queryOverpassServices(
       url.searchParams.set('max_lat', String(effectiveBbox[2]));
       url.searchParams.set('max_lon', String(effectiveBbox[3]));
     }
+    if (params.centerLat != null) url.searchParams.set('center_lat', String(params.centerLat));
+    if (params.centerLon != null) url.searchParams.set('center_lon', String(params.centerLon));
+    if (params.radiusMeters != null) url.searchParams.set('radius_meters', String(params.radiusMeters));
+
     if (category !== 'all') {
       url.searchParams.append('categories', category);
     }
@@ -306,7 +397,7 @@ export async function queryOverpassServices(
     url.searchParams.set('fallback_to_demo', 'true');
 
     const res = await fetch(url.toString(), {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(35000),
       headers: { Accept: 'application/json' },
     });
 
@@ -314,32 +405,61 @@ export async function queryOverpassServices(
       const json = await res.json();
       const rawServices: any[] = json.services || [];
 
-      const facilities: ServiceFacilityProperties[] = rawServices.map((s: any) => ({
-        id: s.osm_id,
-        name: s.name || `Unnamed ${capitalize(s.service_category)} Facility`,
-        category_code: s.service_category,
-        category_name: s.service_category.toUpperCase(),
-        latitude: s.latitude,
-        longitude: s.longitude,
-        status: (s.operating_status ? 'operational' : 'operational') as any,
-        source_type: s.source,
-        verification_status: s.is_demo_data ? 'unverified' : 'verified',
-        confidence_score: s.is_demo_data ? 0.75 : 0.88,
-        capacity: s.capacity,
-        current_load: null,
-        operating_hours: s.operating_status || null,
-        osm_id: s.osm_id,
-        osm_type: s.osm_type || 'node',
-        is_demo_data: s.is_demo_data ?? false,
-        tags: s.tags || {},
-      }));
+      const allFacilities: ServiceFacilityProperties[] = rawServices.map((s: any) => {
+        const catCode = (category !== 'all' ? category : (s.service_category || 'transport')).toLowerCase();
+        return {
+          id: s.osm_id || s.id,
+          name: s.name || `Unnamed ${capitalize(catCode)} Facility`,
+          category_code: catCode as any,
+          category_name: catCode.toUpperCase(),
+          latitude: s.latitude,
+          longitude: s.longitude,
+          status: 'operational' as any,
+          source_type: s.source || 'OpenStreetMap',
+          verification_status: s.is_demo_data ? 'unverified' : 'verified',
+          confidence_score: s.is_demo_data ? 0.75 : 0.88,
+          capacity: s.capacity,
+          current_load: null,
+          operating_hours: s.operating_status || null,
+          osm_id: s.osm_id,
+          osm_type: s.osm_type || 'node',
+          is_demo_data: s.is_demo_data ?? false,
+          tags: s.tags || {},
+        };
+      });
 
-      overpassCache.set(cacheKey, { timestamp: Date.now(), data: facilities });
+      // Cache raw facilities before sampling
+      overpassCache.set(cacheKey, { timestamp: Date.now(), data: allFacilities });
+
+      let displayedFacilities = allFacilities;
+      const rawTotalCount = allFacilities.length;
+      let isCapped = false;
+
+      // When querying a specific locality bounding box, strictly filter facilities to that area
+      if (params.bbox) {
+        const [minLat, minLon, maxLat, maxLon] = params.bbox;
+        const buffer = 0.003;
+        displayedFacilities = allFacilities.filter(
+          (f) =>
+            f.latitude >= minLat - buffer &&
+            f.latitude <= maxLat + buffer &&
+            f.longitude >= minLon - buffer &&
+            f.longitude <= maxLon + buffer
+        );
+      } else if (allFacilities.length > 120) {
+        // Whole city query with thousands of pins: sample representative items for smooth 60fps rendering
+        displayedFacilities = sampleRepresentativeFacilities(allFacilities, 120);
+        isCapped = true;
+      }
+
+      const finalStatus = displayedFacilities.length > 0 ? 'success' : 'empty';
 
       return {
-        facilities,
+        facilities: displayedFacilities,
+        totalCount: rawTotalCount,
+        isCapped,
         cached: json.cached ?? false,
-        status: json.status,
+        status: finalStatus,
         source: json.source || 'OpenStreetMap',
         isDemoData: json.is_demo_data ?? false,
         localityName: json.locality_name || params.localityName,
@@ -348,7 +468,29 @@ export async function queryOverpassServices(
       };
     }
   } catch (err: any) {
-    // Backend offline or timeout -> fall back to deterministic local dataset
+    // Backend offline or timeout -> attempt direct browser fetch from public Overpass API
+    try {
+      const directFacilities = await queryPublicOverpassDirectly(
+        effectiveBbox,
+        category,
+        effectiveLocalityName
+      );
+      if (directFacilities && directFacilities.length > 0) {
+        overpassCache.set(cacheKey, { timestamp: Date.now(), data: directFacilities });
+        return {
+          facilities: directFacilities,
+          cached: false,
+          status: 'success',
+          source: 'OpenStreetMap (Live Direct)',
+          isDemoData: false,
+          localityName: effectiveLocalityName,
+          attribution: '© OpenStreetMap contributors',
+        };
+      }
+    } catch {
+      // Proceed to deterministic fallback
+    }
+
     const isTimeout = err.name === 'TimeoutError' || (err.message && err.message.includes('timeout'));
     const statusType: 'timeout' | 'error' = isTimeout ? 'timeout' : 'error';
     const warningMsg = isTimeout
@@ -363,7 +505,7 @@ export async function queryOverpassServices(
       status: statusType,
       source: 'simulated_demo',
       isDemoData: true,
-      localityName: params.localityName || 'Metro City',
+      localityName: params.localityName || 'Indore',
       warning: warningMsg,
       error: err.message,
       attribution: '© OpenStreetMap contributors (Base Map) | CivicPulse Deterministic Demo Dataset',
@@ -378,10 +520,132 @@ export async function queryOverpassServices(
     status: 'error',
     source: 'simulated_demo',
     isDemoData: true,
-    localityName: params.localityName || 'Metro City',
+    localityName: params.localityName || 'Indore',
     warning: 'Overpass query returned a non-success status. Preserving deterministic demo facilities.',
     attribution: '© OpenStreetMap contributors (Base Map) | CivicPulse Deterministic Demo Dataset',
   };
+}
+
+// Direct public Overpass query fallback
+async function queryPublicOverpassDirectly(
+  bbox: [number, number, number, number],
+  category: string,
+  _localityName: string
+): Promise<ServiceFacilityProperties[] | null> {
+  const [minLat, minLon, maxLat, maxLon] = bbox;
+  let filters = '';
+  if (category === 'healthcare' || category === 'all') {
+    filters += `node["amenity"="hospital"](${minLat},${minLon},${maxLat},${maxLon});way["amenity"="hospital"](${minLat},${minLon},${maxLat},${maxLon});node["amenity"="clinic"](${minLat},${minLon},${maxLat},${maxLon});node["amenity"="pharmacy"](${minLat},${minLon},${maxLat},${maxLon});`;
+  }
+  if (category === 'education' || category === 'all') {
+    filters += `node["amenity"="school"](${minLat},${minLon},${maxLat},${maxLon});way["amenity"="school"](${minLat},${minLon},${maxLat},${maxLon});node["amenity"="college"](${minLat},${minLon},${maxLat},${maxLon});`;
+  }
+  if (category === 'transport' || category === 'all') {
+    filters += `node["highway"="bus_stop"](${minLat},${minLon},${maxLat},${maxLon});node["public_transport"="platform"](${minLat},${minLon},${maxLat},${maxLon});node["public_transport"="stop_position"](${minLat},${minLon},${maxLat},${maxLon});node["amenity"="bus_station"](${minLat},${minLon},${maxLat},${maxLon});node["railway"="station"](${minLat},${minLon},${maxLat},${maxLon});`;
+  }
+  if (category === 'water' || category === 'all') {
+    filters += `node["amenity"="drinking_water"](${minLat},${minLon},${maxLat},${maxLon});node["amenity"="water_point"](${minLat},${minLon},${maxLat},${maxLon});`;
+  }
+  if (category === 'market' || category === 'all') {
+    filters += `node["amenity"="marketplace"](${minLat},${minLon},${maxLat},${maxLon});node["shop"="supermarket"](${minLat},${minLon},${maxLat},${maxLon});node["shop"="convenience"](${minLat},${minLon},${maxLat},${maxLon});`;
+  }
+
+  const ql = `[out:json][timeout:25];(${filters});out center body 120;`;
+  const res = await fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `data=${encodeURIComponent(ql)}`,
+    signal: AbortSignal.timeout(25000),
+  });
+
+  if (res.ok) {
+    const json = await res.json();
+    if (Array.isArray(json.elements) && json.elements.length > 0) {
+      return json.elements
+        .map((el: any) => {
+          const lat = el.lat ?? el.center?.lat;
+          const lon = el.lon ?? el.center?.lon;
+          const tags = el.tags || {};
+          const amenity = (tags.amenity || '').toLowerCase();
+          const highway = (tags.highway || '').toLowerCase();
+          const publicTransport = (tags.public_transport || '').toLowerCase();
+          const railway = (tags.railway || '').toLowerCase();
+          const shop = (tags.shop || '').toLowerCase();
+          const healthcare = (tags.healthcare || '').toLowerCase();
+
+          // Robust category resolution conforming to CivicPulse categories
+          let cat = category !== 'all' ? category : 'healthcare';
+          if (
+            highway === 'bus_stop' ||
+            highway === 'platform' ||
+            railway === 'station' ||
+            railway === 'halt' ||
+            publicTransport === 'platform' ||
+            publicTransport === 'stop_position' ||
+            publicTransport === 'station' ||
+            amenity === 'bus_station' ||
+            tags.bus === 'yes' ||
+            category === 'transport'
+          ) {
+            cat = 'transport';
+          } else if (
+            amenity === 'school' ||
+            amenity === 'college' ||
+            amenity === 'kindergarten' ||
+            amenity === 'university' ||
+            category === 'education'
+          ) {
+            cat = 'education';
+          } else if (
+            amenity === 'drinking_water' ||
+            amenity === 'water_point' ||
+            tags.man_made === 'water_tap' ||
+            tags.man_made === 'water_well' ||
+            category === 'water'
+          ) {
+            cat = 'water';
+          } else if (
+            amenity === 'marketplace' ||
+            amenity === 'supermarket' ||
+            shop ||
+            category === 'market'
+          ) {
+            cat = 'market';
+          } else if (
+            amenity === 'hospital' ||
+            amenity === 'clinic' ||
+            amenity === 'doctors' ||
+            amenity === 'pharmacy' ||
+            healthcare ||
+            category === 'healthcare'
+          ) {
+            cat = 'healthcare';
+          }
+
+          return {
+            id: el.id,
+            name: tags.name || `Unnamed ${capitalize(cat)} Facility`,
+            category_code: cat as any,
+            category_name: cat.toUpperCase(),
+            latitude: lat,
+            longitude: lon,
+            status: 'operational',
+            source_type: 'OpenStreetMap',
+            verification_status: 'verified',
+            confidence_score: 0.9,
+            capacity: null,
+            current_load: null,
+            operating_hours: tags.opening_hours || null,
+            osm_id: el.id,
+            osm_type: el.type,
+            is_demo_data: false,
+            tags,
+          };
+        })
+        .filter((f: any) => f.latitude && f.longitude);
+    }
+  }
+  return null;
 }
 
 function getDeterministicFallback(category: string, areaId?: number): ServiceFacilityProperties[] {

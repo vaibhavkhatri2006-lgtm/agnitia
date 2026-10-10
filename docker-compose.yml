@@ -1,24 +1,6 @@
 version: '3.8'
 
 services:
-  db:
-    image: postgis/postgis:16-3.4-alpine
-    container_name: civicpulse_db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: civicpulse
-      POSTGRES_PASSWORD: civicpulse_secret
-      POSTGRES_DB: civicpulse_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U civicpulse -d civicpulse_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   backend:
     build:
       context: ./backend
@@ -28,14 +10,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg2://civicpulse:civicpulse_secret@db:5432/civicpulse_db
+      DATABASE_URL: mysql+pymysql://USER:PASSWORD@host.docker.internal:3306/civicpulse_real?charset=utf8mb4
       BACKEND_HOST: 0.0.0.0
       BACKEND_PORT: 8000
       ENVIRONMENT: development
       DEBUG: "True"
-    depends_on:
-      db:
-        condition: service_healthy
-
-volumes:
-  pgdata:
