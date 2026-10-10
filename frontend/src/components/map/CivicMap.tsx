@@ -9,8 +9,10 @@ export interface CivicMapProps {
   boundaries?: GeoJSON.FeatureCollection;
   center?: [number, number];
   zoom?: number;
-  activeLayer?: 'none' | 'accessibility' | 'gap' | 'equity' | 'services' | 'reports' | 'recommendations';
+  activeLayer?: 'none' | 'accessibility' | 'gap' | 'equity' | 'services' | 'reports' | 'recommendations' | 'simulation';
   onLocalitySelect?: (loc: LocalityProperties | null) => void;
+  onMapClick?: (lat: number, lng: number) => void;
+  simulationPin?: { lat: number; lng: number } | null;
   className?: string;
   initialCategory?: string;
   initialCity?: 'indore' | 'bengaluru';
@@ -21,6 +23,8 @@ export const CivicMap: React.FC<CivicMapProps> = ({
   zoom,
   activeLayer = 'services',
   onLocalitySelect,
+  onMapClick,
+  simulationPin,
   className = 'w-full h-full min-h-[500px]',
   initialCategory = 'all',
   initialCity = 'indore',
@@ -44,6 +48,8 @@ export const CivicMap: React.FC<CivicMapProps> = ({
       activeLayer={mappedLayer}
       className={className}
       onLocalitySelect={onLocalitySelect}
+      onMapClick={onMapClick}
+      simulationPin={simulationPin}
       initialCategory={initialCategory}
       initialCity={initialCity}
     />

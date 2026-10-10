@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen } from 'lucide-react';
+import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AppLayout = () => {
@@ -17,6 +17,7 @@ export const AppLayout = () => {
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'Civic Map', path: '/map', icon: MapIcon },
+    { name: 'Scenario Lab', path: '/scenario-lab', icon: Sparkles },
     { name: 'Methodology', path: '/methodology', icon: BookOpen },
     // Show 'Report Reality' only to citizens or community
     ...(user?.role === 'Citizen' || user?.role === 'Community' ? [{ name: 'Report Reality', path: '/report', icon: ShieldAlert }] : []),

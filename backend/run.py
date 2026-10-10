@@ -11,18 +11,22 @@ from app.config import settings
 
 
 def main():
+    # Render and other PaaS inject PORT and require binding to 0.0.0.0
+    host = "0.0.0.0" if settings.PORT else settings.BACKEND_HOST
+    port = settings.PORT or settings.BACKEND_PORT
+
     print(f"============================================================")
     print(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     print(f"Environment: {settings.ENVIRONMENT}")
-    print(f"Listening on: http://{settings.BACKEND_HOST}:{settings.BACKEND_PORT}")
-    print(f"API Docs:     http://{settings.BACKEND_HOST}:{settings.BACKEND_PORT}/docs")
-    print(f"Health Probe: http://{settings.BACKEND_HOST}:{settings.BACKEND_PORT}/health")
+    print(f"Listening on: http://{host}:{port}")
+    print(f"API Docs:     http://{host}:{port}/docs")
+    print(f"Health Probe: http://{host}:{port}/health")
     print(f"============================================================")
     uvicorn.run(
         "app.main:app",
-        host=settings.BACKEND_HOST,
-        port=settings.BACKEND_PORT,
-        reload=settings.DEBUG,
+        host=host,
+        port=port,
+        reload=settings.DEBUG and not settings.PORT,
     )
 
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import {
@@ -94,6 +94,14 @@ const CATEGORY_CONFIG: Record<
     border: '#34d399',
     text: '#047857',
     icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>`,
+  },
+  simulation: {
+    label: 'Simulation',
+    color: '#8b5cf6', // purple-500
+    bg: '#ede9fe',
+    border: '#a78bfa',
+    text: '#6d28d9',
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>`,
   },
 };
 
@@ -386,13 +394,24 @@ function MapViewController({ targetCenter, targetZoom }: { targetCenter?: [numbe
   return null;
 }
 
-export type MapLayerType = 'services' | 'accessibility' | 'gap' | 'reports' | 'recommendations';
+function MapClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      if (onClick) onClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
+export type MapLayerType = 'services' | 'accessibility' | 'gap' | 'reports' | 'recommendations' | 'simulation';
 
 export interface MapViewProps {
   center?: [number, number];
   zoom?: number;
   activeLayer?: MapLayerType;
   onLocalitySelect?: (locality: LocalityProperties | null) => void;
+  onMapClick?: (lat: number, lng: number) => void;
+  simulationPin?: { lat: number; lng: number } | null;
   className?: string;
   initialCategory?: string;
   initialCity?: 'indore' | 'bengaluru';
@@ -403,6 +422,8 @@ export const MapView: React.FC<MapViewProps> = ({
   zoom = METRO_CITY_DEFAULT_ZOOM,
   activeLayer: initialLayer = 'services',
   onLocalitySelect,
+  onMapClick,
+  simulationPin,
   className = 'w-full h-full min-h-[520px]',
   initialCategory = 'all',
   initialCity = 'indore',
@@ -1092,6 +1113,20 @@ export const MapView: React.FC<MapViewProps> = ({
           />
 
           <MapViewController targetCenter={mapTargetCenter} targetZoom={mapTargetZoom} />
+          {onMapClick && <MapClickHandler onClick={onMapClick} />}
+
+          {/* Simulation Pin */}
+          {simulationPin && (
+            <Marker
+              position={[simulationPin.lat, simulationPin.lng]}
+              icon={createCategoryPinIcon('simulation', false, 'transport')}
+              zIndexOffset={1000}
+            >
+              <Popup>
+                <div className="text-sm font-bold p-1">Proposed Facility Location</div>
+              </Popup>
+            </Marker>
+          )}
 
           {/* Locality Boundary - Render ONLY for the selected area */}
           {activeAreasGeoJson && (

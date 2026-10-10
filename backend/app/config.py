@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     BACKEND_HOST: str = "127.0.0.1"
     BACKEND_PORT: int = 8000
+    PORT: Optional[int] = None # Render injects PORT
     DATABASE_URL: str = "sqlite:///./civicpulse.db"
     FRONTEND_URL: Optional[str] = "http://localhost:5173"
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"

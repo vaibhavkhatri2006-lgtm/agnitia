@@ -8,6 +8,7 @@ import { Dashboard } from './pages/Dashboard';
 import { MapPage } from './pages/MapPage';
 import { ReportPage } from './pages/ReportPage';
 import { MethodologyPage } from './pages/MethodologyPage';
+import { SimulationPage } from './pages/SimulationPage';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/map" element={<MapPage />} />
+              <Route path="/scenario-lab" element={<SimulationPage />} />
               <Route path="/report" element={<ReportPage />} />
               <Route path="/methodology" element={<MethodologyPage />} />
             </Route>

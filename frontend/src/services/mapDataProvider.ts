@@ -669,3 +669,27 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+export async function fetchSimulation(payload: any) {
+  try {
+    const token = localStorage.getItem('civicpulse_auth_token');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${BACKEND_BASE_URL}/simulations`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Simulation failed: ${text}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching simulation:', err);
+    throw err;
+  }
+}
