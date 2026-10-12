@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCivicScore } from '../../context/CivicScoreContext';
-import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen, Sparkles, Star } from 'lucide-react';
+import { LogOut, LayoutDashboard, Map as MapIcon, ShieldAlert, BookOpen, Sparkles, Star, Bot, MessageSquarePlus } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const AppLayout = () => {
@@ -21,6 +21,8 @@ export const AppLayout = () => {
     { name: 'Civic Map', path: '/map', icon: MapIcon },
     { name: 'Scenario Lab', path: '/scenario-lab', icon: Sparkles },
     { name: 'Methodology', path: '/methodology', icon: BookOpen },
+    { name: 'CivicBot', path: '/voice-assistant', icon: Bot },
+    { name: 'Feedback', path: '/feedback', icon: MessageSquarePlus },
     ...(user?.role === 'Citizen' || user?.role === 'Community'
       ? [{ name: 'Report Reality', path: '/report', icon: ShieldAlert }]
       : []),

@@ -10,6 +10,8 @@ import { MapPage } from './pages/MapPage';
 import { ReportPage } from './pages/ReportPage';
 import { MethodologyPage } from './pages/MethodologyPage';
 import { SimulationPage } from './pages/SimulationPage';
+import { VoiceAssistantPage } from './pages/VoiceAssistantPage';
+import { FeedbackPage } from './pages/FeedbackPage';
 
 function App() {
   return (
@@ -28,6 +30,8 @@ function App() {
                 <Route path="/scenario-lab" element={<SimulationPage />} />
                 <Route path="/report" element={<ReportPage />} />
                 <Route path="/methodology" element={<MethodologyPage />} />
+                <Route path="/voice-assistant" element={<VoiceAssistantPage />} />
+                <Route path="/feedback" element={<FeedbackPage />} />
               </Route>
             </Route>
             

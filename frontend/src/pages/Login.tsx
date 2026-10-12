@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types/models';
-import { Eye, EyeOff, Lock, UserPlus, LogIn, Database, ShieldCheck, AlertCircle, KeyRound, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Lock, UserPlus, LogIn, ShieldCheck, AlertCircle, KeyRound, Sparkles } from 'lucide-react';
 import DarkVeil from '../components/ui/DarkVeil';
 
 type AuthMode = 'login' | 'register' | 'reset';
@@ -54,14 +54,14 @@ export const Login = () => {
               // Try registering the user into SQL database automatically
               await register(cleanEmail, password, role, displayName || cleanEmail.split('@')[0]);
               setSuccessMessage(
-                'New account detected! Successfully registered and saved in SQL database. Redirecting...'
+                'New account created successfully! Redirecting...'
               );
             } catch (regErr: any) {
               const regErrMsg = regErr.message || '';
               // If registration returns that account already exists, then the password was simply different!
               if (regErrMsg.includes('already exists')) {
                 throw new Error(
-                  'Password did not match existing SQL record. Click "Update Password & Sign In" below to sync with this password.'
+                  'Password did not match. Click "Update Password & Sign In" below to reset.'
                 );
               }
               throw regErr;
@@ -74,12 +74,12 @@ export const Login = () => {
         // Explicit registration mode
         try {
           await register(cleanEmail, password, role, displayName || cleanEmail.split('@')[0]);
-          setSuccessMessage('Account registered and stored in SQL database! Redirecting...');
+          setSuccessMessage('Account created successfully! Redirecting...');
         } catch (regErr: any) {
           const regErrMsg = regErr.message || '';
           if (regErrMsg.includes('already exists')) {
             throw new Error(
-              'This email is already in the database. Use "Reset Password" or click "Update Password & Sign In" below.'
+              'This email is already registered. Use "Reset Password" or click "Update Password & Sign In" below.'
             );
           }
           throw regErr;
@@ -87,7 +87,7 @@ export const Login = () => {
       } else if (mode === 'reset') {
         // Explicit reset / sync password mode
         await resetPassword(cleanEmail, password, role);
-        setSuccessMessage('Password successfully updated and verified in SQL! Redirecting...');
+        setSuccessMessage('Password updated successfully! Redirecting...');
       }
 
       setTimeout(() => {
@@ -110,7 +110,7 @@ export const Login = () => {
     setErrorMessage(null);
     try {
       await resetPassword(cleanEmail, password, role);
-      setSuccessMessage('Password updated in SQL and signed in successfully! Redirecting...');
+      setSuccessMessage('Password updated and signed in successfully! Redirecting...');
       setTimeout(() => {
         navigate('/dashboard');
       }, 700);
@@ -160,8 +160,8 @@ export const Login = () => {
           {/* Header */}
           <header className="mb-6 text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-[11px] font-mono uppercase tracking-wider font-semibold text-blue-400 mb-3">
-              <Database className="w-3.5 h-3.5" />
-              SQL Database Authenticated
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Secure Authentication
             </div>
             <h1 className="text-2xl sm:text-[28px] font-bold text-white tracking-tight leading-snug mb-1">
               {mode === 'login'
@@ -172,10 +172,10 @@ export const Login = () => {
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-normal">
               {mode === 'login'
-                ? 'Authenticate with your email & password stored in SQL.'
+                ? 'Sign in with your email and password to access the platform.'
                 : mode === 'register'
-                ? 'Register your email & password to store them permanently in SQL.'
-                : 'Update your password in SQL and sign in immediately.'}
+                ? 'Create your account to get started with CivicPulse.'
+                : 'Update your password and sign back in immediately.'}
             </p>
           </header>
 
@@ -277,7 +277,7 @@ export const Login = () => {
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs transition inline-flex items-center gap-1.5 shadow"
                   >
                     <KeyRound className="w-3.5 h-3.5" />
-                    Update Password & Sign In with SQL
+                    Update Password & Sign In
                   </button>
                 </div>
               )}
@@ -347,7 +347,7 @@ export const Login = () => {
                   {mode === 'reset' ? 'New Password' : 'Password'}
                 </label>
                 <span className="text-[11px] text-slate-400 font-mono">
-                  Bcrypt Hashed in SQL
+                  Securely encrypted
                 </span>
               </div>
               <div className="relative">
@@ -359,7 +359,7 @@ export const Login = () => {
                   required
                   placeholder={
                     mode === 'reset'
-                      ? 'Enter your new password to store in SQL'
+                      ? 'Enter your new password'
                       : mode === 'register'
                       ? 'Choose an account password'
                       : 'Enter your password'
@@ -407,7 +407,7 @@ export const Login = () => {
                   className="h-4 w-4 rounded border-white/20 bg-transparent text-blue-500 focus:ring-blue-500 accent-blue-600"
                 />
                 <label htmlFor="auto-register" className="ml-2 block text-xs text-slate-300 select-none">
-                  Auto-register and store in SQL if new user
+                  Auto-create account if not registered yet
                 </label>
               </div>
             )}
@@ -426,17 +426,17 @@ export const Login = () => {
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     {mode === 'login'
-                      ? 'Authenticating with SQL...'
+                      ? 'Signing in...'
                       : mode === 'register'
-                      ? 'Saving to SQL Database...'
-                      : 'Updating SQL Password...'}
+                      ? 'Creating account...'
+                      : 'Updating password...'}
                   </>
                 ) : mode === 'login' ? (
-                  'Sign In with SQL'
+                  'Sign In'
                 ) : mode === 'register' ? (
-                  'Create Account & Store in SQL'
+                  'Create Account'
                 ) : (
-                  'Update Password & Sign In with SQL'
+                  'Update Password & Sign In'
                 )}
               </button>
             </div>
